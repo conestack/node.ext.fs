@@ -6,12 +6,18 @@ from node.behaviors import MappingNode
 from node.behaviors import Reference
 from node.compat import IS_PY2
 from node.ext.directory import Directory
-from node.ext.directory import directory
+from node.ext.directory import FSLocation
+from node.ext.directory import FSMode
 from node.ext.directory import File
 from node.ext.directory import MODE_BINARY
 from node.ext.directory import MODE_TEXT
+from node.ext.directory import directory
+from node.ext.directory import get_fs_mode
+from node.ext.directory import get_fs_path
 from node.ext.directory.events import IFileAddedEvent
 from node.ext.directory.interfaces import IDirectory
+from node.ext.directory.interfaces import IFSLocation
+from node.ext.directory.interfaces import IFSMode
 from node.ext.directory.interfaces import IFile
 from node.tests import NodeTestCase
 from node.tests import patch
@@ -68,6 +74,22 @@ class DummyLogger(object):
 dummy_logger = DummyLogger()
 
 
+@plumbing(FSLocation)
+class FSLocationObject(object):
+
+    def __init__(self, name=None, parent=None, path=[]):
+        self.name = name
+        self.parent = parent
+        self.path = path
+
+
+@plumbing(FSMode)
+class FSModeObject(FSLocationObject):
+
+    def __call__(self):
+        pass
+
+
 ###############################################################################
 # Tests
 ###############################################################################
@@ -85,6 +107,51 @@ class TestDirectory(NodeTestCase):
         super(TestDirectory, self).tearDown()
         dummy_logger.clear()
         shutil.rmtree(self.tempdir)
+
+    def test_get_fs_path(self):
+        ob = FSLocationObject(path=['path'])
+        self.assertEqual(get_fs_path(ob), ['path'])
+        self.assertEqual(get_fs_path(ob, ['child']), ['path', 'child'])
+
+        class DummyNode:
+            path = ['root']
+
+        ob = DummyNode()
+        self.assertEqual(get_fs_path(ob), ['root'])
+        self.assertEqual(get_fs_path(ob, ['child']), ['root', 'child'])
+
+    def test_FSLocation(self):
+        ob = FSLocationObject(name='name', path=['path'])
+        self.assertTrue(IFSLocation.providedBy(ob))
+        self.assertEqual(ob.fs_path, ['path'])
+        ob.parent = FSLocationObject(path=['root'])
+        self.assertEqual(ob.fs_path, ['root', 'name'])
+        ob.fs_path = ['path', 'to', 'ob']
+        self.assertEqual(ob.fs_path, ['path', 'to', 'ob'])
+
+    def test_get_fs_mode(self):
+        path = os.path.join(self.tempdir, 'file')
+        with open(path, 'w') as f:
+            f.write('')
+        os.chmod(path, 0O644)
+        ob = FSModeObject(path=[self.tempdir, 'file'])
+        self.assertEqual(get_fs_mode(ob), 0O644)
+        os.chmod(path, 0O664)
+        self.assertEqual(get_fs_mode(ob), 0O664)
+        ob = FSModeObject(path=[self.tempdir, 'inexistent'])
+        self.assertEqual(get_fs_mode(ob), None)
+
+    def test_FSMode(self):
+        path = os.path.join(self.tempdir, 'file')
+        with open(path, 'w') as f:
+            f.write('')
+        ob = FSModeObject(path=[self.tempdir, 'inexistent'])
+        self.assertEqual(ob.fs_mode, None)
+        ob = FSModeObject(path=[self.tempdir, 'file'])
+        ob.fs_mode = 0O777
+        ob()
+        ob = FSModeObject(path=[self.tempdir, 'file'])
+        self.assertEqual(ob.fs_mode, 0O777)
 
     def test_file_persistance(self):
         filepath = os.path.join(self.tempdir, 'file.txt')
@@ -498,6 +565,13 @@ class TestDirectory(NodeTestCase):
             'WARNING: ``backup`` handling has been removed from '
             '``Directory`` implementation as of node.ext.directory 0.7'
         ])
+
+    def test_fs_path_keyword_argument(self):
+        directory = Directory(name='foo')
+        self.assertEqual(directory.fs_path, ['foo'])
+
+        directory = Directory(name='foo', fs_path=['bar'])
+        self.assertEqual(directory.fs_path, ['bar'])
 
     def test_node_index(self):
         directory = Directory(name=os.path.join(self.tempdir, 'root'))

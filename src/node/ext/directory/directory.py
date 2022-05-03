@@ -6,9 +6,9 @@ from node.behaviors import Reference
 from node.compat import IS_PY2
 from node.ext.directory.events import FileAddedEvent
 from node.ext.directory.interfaces import IDirectory
-from node.ext.directory.interfaces import IFile
 from node.ext.directory.interfaces import IFSLocation
 from node.ext.directory.interfaces import IFSMode
+from node.ext.directory.interfaces import IFile
 from node.ext.directory.interfaces import MODE_BINARY
 from node.ext.directory.interfaces import MODE_TEXT
 from node.locking import locktree
