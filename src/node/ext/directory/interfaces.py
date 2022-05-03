@@ -2,6 +2,7 @@ from node.interfaces import ICallable
 from node.interfaces import ILeaf
 from node.interfaces import INode
 from zope.interface import Attribute
+from zope.interface import Interface
 from zope.lifecycleevent import IObjectAddedEvent
 
 
@@ -13,12 +14,20 @@ class IFileAddedEvent(IObjectAddedEvent):
     """A File has been added to directory."""
 
 
-class IFile(INode, ILeaf, ICallable):
-    """File interface."""
+class IFSLocation(Interface):
+    """Plumbing behavior for providing a file system location."""
 
-    fs_path = Attribute('Filesystem path of this file')
+    fs_path = Attribute('Filesystem location of this object')
+
+
+class IFSMode(Interface):
+    """Plumbing behavior for managing file system mode."""
 
     fs_mode = Attribute('Filesystem mode as expected by ``os.chmod``')
+
+
+class IFile(INode, ILeaf, ICallable, IFSLocation):
+    """File interface."""
 
     direct_sync = Attribute(
         'Flag whether to directly sync filesystem with ``os.fsync`` on '
@@ -37,12 +46,8 @@ class IFile(INode, ILeaf, ICallable):
     )
 
 
-class IDirectory(INode, ICallable):
+class IDirectory(INode, ICallable, IFSLocation):
     """Directory interface."""
-
-    fs_path = Attribute('Filesystem path of this directory')
-
-    fs_mode = Attribute('Filesystem mode as expected by ``os.chmod``')
 
     fs_encoding = Attribute('Filesystem encoding. Defaults to UTF-8')
 

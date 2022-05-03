@@ -7,12 +7,15 @@ from node.compat import IS_PY2
 from node.ext.directory.events import FileAddedEvent
 from node.ext.directory.interfaces import IDirectory
 from node.ext.directory.interfaces import IFile
+from node.ext.directory.interfaces import IFSLocation
+from node.ext.directory.interfaces import IFSMode
 from node.ext.directory.interfaces import MODE_BINARY
 from node.ext.directory.interfaces import MODE_TEXT
 from node.locking import locktree
 from plumber import Behavior
 from plumber import default
 from plumber import finalize
+from plumber import plumb
 from plumber import plumbing
 from zope.component.event import objectEventNotify
 from zope.interface import implementer
@@ -24,26 +27,53 @@ import shutil
 logger = logging.getLogger('node.ext.directory')
 
 
-def _fs_path(ob):
+def get_fs_path(ob, child_path=[]):
     # Use fs_path if provided by ob, otherwise fallback to path
     if hasattr(ob, 'fs_path'):
-        return ob.fs_path
-    return ob.path
+        return ob.fs_path + child_path
+    return ob.path + child_path
 
 
-def _fs_mode(ob):
-    fs_path = os.path.join(*_fs_path(ob))
+# B/C
+_fs_path = get_fs_path
+
+
+@implementer(IFSLocation)
+class FSLocation(Behavior):
+
+    @property
+    def fs_path(self):
+        if getattr(self, '_fs_path', None) is not None:
+            return self._fs_path
+        parent = self.parent
+        if parent is not None and hasattr(parent, 'fs_path'):
+            return self.parent.fs_path + [self.name]
+        return self.path
+
+    @default
+    @fs_path.setter
+    def fs_path(self, path):
+        self._fs_path = path
+
+
+def get_fs_mode(node):
+    fs_path = os.path.join(*get_fs_path(node))
     if not os.path.exists(fs_path):
         return None
     return os.stat(fs_path).st_mode & 0o777
 
 
-class _FSModeMixin(Behavior):
+# B/C
+_fs_mode = get_fs_mode
+
+
+@implementer(IFSMode)
+class FSMode(Behavior):
 
     @property
     def fs_mode(self):
         if not hasattr(self, '_fs_mode'):
-            fs_mode = _fs_mode(self)
+            fs_mode = get_fs_mode(self)
             if fs_mode is None:
                 return None
             self._fs_mode = fs_mode
@@ -54,9 +84,17 @@ class _FSModeMixin(Behavior):
     def fs_mode(self, mode):
         self._fs_mode = mode
 
+    @plumb
+    def __call__(next_, self):
+        # Change file system mode if set
+        next_(self)
+        fs_mode = self.fs_mode
+        if fs_mode is not None:
+            os.chmod(os.path.join(*get_fs_path(self)), fs_mode)
+
 
 @implementer(IFile)
-class FileStorage(DictStorage, _FSModeMixin):
+class FileStorage(DictStorage, FSLocation):
     direct_sync = default(False)
 
     @property
@@ -77,7 +115,7 @@ class FileStorage(DictStorage, _FSModeMixin):
                 self._data = None
             else:
                 self._data = ''
-            file_path = os.path.join(*_fs_path(self))
+            file_path = os.path.join(*get_fs_path(self))
             if os.path.exists(file_path):
                 mode = self.mode == MODE_BINARY and 'rb' or 'r'
                 with open(file_path, mode) as file:
@@ -105,17 +143,10 @@ class FileStorage(DictStorage, _FSModeMixin):
             raise RuntimeError('Cannot write lines to binary file.')
         self.data = '\n'.join(lines)
 
-    @default
-    @property
-    def fs_path(self):
-        # seems more appropriate here:
-        #     return self.parent.fs_path + [self.name]
-        return self.path
-
     @finalize
     @locktree
     def __call__(self):
-        file_path = os.path.join(*_fs_path(self))
+        file_path = os.path.join(*get_fs_path(self))
         exists = os.path.exists(file_path)
         # Only write file if it's data has changed or not exists yet
         if hasattr(self, '_changed') or not exists:
@@ -125,10 +156,6 @@ class FileStorage(DictStorage, _FSModeMixin):
                 if self.direct_sync:
                     file.flush()
                     os.fsync(file.fileno())
-        # Change file system mode if set
-        fs_mode = self.fs_mode
-        if fs_mode is not None:
-            os.chmod(file_path, fs_mode)
 
 
 @plumbing(
@@ -136,6 +163,7 @@ class FileStorage(DictStorage, _FSModeMixin):
     DefaultInit,
     Reference,  # XXX: remove from default file
     MappingNode,
+    FSMode,
     FileStorage)
 class File(object):
     pass
@@ -146,7 +174,7 @@ file_factories = dict()
 
 
 @implementer(IDirectory)
-class DirectoryStorage(DictStorage, _FSModeMixin):
+class DirectoryStorage(DictStorage, FSLocation):
     fs_encoding = default('utf-8')
     ignores = default(list())
     default_file_factory = default(File)
@@ -165,29 +193,33 @@ class DirectoryStorage(DictStorage, _FSModeMixin):
     def child_directory_factory(self):
         return Directory
 
-    @default
-    @property
-    def fs_path(self):
-        return self.path
-
     @finalize
-    def __init__(self, name=None, parent=None, backup=False, factories=dict()):
+    def __init__(
+        self,
+        name=None,
+        parent=None,
+        backup=False,
+        factories=dict(),
+        fs_path=None
+    ):
         self.__name__ = name
         self.__parent__ = parent
         if backup or hasattr(self, 'backup'):
             logger.warning(
                 '``backup`` handling has been removed from ``Directory`` '
-                'implementation as of node.ext.directory 0.7')
+                'implementation as of node.ext.directory 0.7'
+            )
         # override file factories if given
         if factories:
             self.factories = factories
+        self.fs_path = fs_path
         self._deleted = list()
 
     @finalize
     @locktree
     def __call__(self):
         if IDirectory.providedBy(self):
-            dir_path = os.path.join(*self.fs_path)
+            dir_path = os.path.join(*get_fs_path(self))
             if os.path.exists(dir_path) and not os.path.isdir(dir_path):
                 raise KeyError(
                     'Attempt to create a directory with name which already '
@@ -198,23 +230,19 @@ class DirectoryStorage(DictStorage, _FSModeMixin):
                 # Ignore ``already exists``.
                 if e.errno != 17:
                     raise e                                   # pragma no cover
-            # Change file system mode if set
-            fs_mode = self.fs_mode
-            if fs_mode is not None:
-                os.chmod(dir_path, fs_mode)
         while self._deleted:
             name = self._deleted.pop()
-            abs_path = os.path.join(*self.fs_path + [name])
+            abs_path = os.path.join(*get_fs_path(self, [name]))
             if os.path.exists(abs_path):
                 if os.path.isdir(abs_path):
                     shutil.rmtree(abs_path)
                 else:
                     os.remove(abs_path)
-        for name, target in self.items():
-            if IDirectory.providedBy(target):
-                target()
-            elif IFile.providedBy(target):
-                target()
+        for value in self.values():
+            if IDirectory.providedBy(value):
+                value()
+            elif IFile.providedBy(value):
+                value()
 
     @finalize
     def __setitem__(self, name, value):
@@ -246,12 +274,12 @@ class DirectoryStorage(DictStorage, _FSModeMixin):
     @default
     @locktree
     def _create_child_by_factory(self, name):
-        filepath = os.path.join(*self.fs_path + [name])
+        filepath = os.path.join(*get_fs_path(self, [name]))
         if not os.path.exists(filepath):
             return
         if os.path.isdir(filepath):
             # XXX: to suppress event notify
-            self[name] = self.child_directory_factory()
+            self[name] = self.child_directory_factory(name=name, parent=self)
             return
         factory = self._factory_for_ending(name)
         if not factory:
@@ -273,14 +301,14 @@ class DirectoryStorage(DictStorage, _FSModeMixin):
     @finalize
     def __delitem__(self, name):
         name = self._encode_name(name)
-        if os.path.exists(os.path.join(*self.fs_path + [name])):
+        if os.path.exists(os.path.join(*get_fs_path(self, [name]))):
             self._deleted.append(name)
         del self.storage[name]
 
     @finalize
     def __iter__(self):
         try:
-            existing = set(os.listdir(os.path.join(*self.fs_path)))
+            existing = set(os.listdir(os.path.join(*get_fs_path(self))))
         except OSError:
             existing = set()
         for key in self.storage:
@@ -324,8 +352,9 @@ class DirectoryStorage(DictStorage, _FSModeMixin):
 
 @plumbing(
     MappingAdopt,
-    Reference,  # XXX: remove from default file
+    Reference,  # XXX: remove from default directory
     MappingNode,
+    FSMode,
     DirectoryStorage)
 class Directory(object):
     """Object mapping a file system directory.

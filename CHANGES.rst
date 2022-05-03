@@ -1,10 +1,34 @@
 Changes
 =======
 
-0.9 (unreleased)
+1.0 (unreleased)
 ----------------
 
-- Nothing changed yet.
+- Pass ``name`` and ``parent`` to ``DirectoryStorage.child_directory_factory``.
+  [rnix]
+
+- ``DirectoryStorage`` accepts ``fs_path`` keyword argument.
+  [rnix]
+
+- Rename ``_FSModeMixin`` plumbing behavior to ``FSMode``. Setting the actual
+  file mode is now done by plumbing ``__call__`` function.
+  [rnix]
+
+- Introduce ``FSLocation`` plumbing behavior.
+  [rnix]
+
+- Rename ``_fs_path`` helper function to ``get_fs_path``. B/C is kept.
+  [rnix]
+
+- Rename ``_fs_mode`` helper function to ``get_fs_mode``. B/C is kept.
+  [rnix]
+
+**Breaking Changes**
+
+- ``FileStorage`` and ``DirectoryStorage`` not inherits from ``_FSModeMixin``
+  respective now ``FSMode`` behavior any more. ``FSMode`` behavior must be
+  applied explicit on nodes which should provide this behavior.
+  [rnix]
 
 
 0.8 (2022-03-21)
