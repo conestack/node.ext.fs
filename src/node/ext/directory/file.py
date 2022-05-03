@@ -1,9 +1,7 @@
 from node.behaviors import DefaultInit
-from node.behaviors import DictStorage
-from node.behaviors import MappingAdopt
-from node.behaviors import MappingNode
+from node.behaviors import Node
 from node.behaviors import Reference
-from node.ext.directory.interfaces import IFile
+from node.ext.directory.interfaces import IFileNode
 from node.ext.directory.interfaces import MODE_BINARY
 from node.ext.directory.interfaces import MODE_TEXT
 from node.ext.directory.location import FSLocation
@@ -17,8 +15,8 @@ from zope.interface import implementer
 import os
 
 
-@implementer(IFile)
-class FileStorage(DictStorage, FSLocation):
+@implementer(IFileNode)
+class FileNode(Node, FSLocation):
     direct_sync = default(False)
 
     @property
@@ -80,14 +78,13 @@ class FileStorage(DictStorage, FSLocation):
                 if self.direct_sync:
                     file.flush()
                     os.fsync(file.fileno())
+            self._changed = False
 
 
 @plumbing(
-    MappingAdopt,
     DefaultInit,
     Reference,  # XXX: remove from default file
-    MappingNode,
     FSMode,
-    FileStorage)
+    FileNode)
 class File(object):
     pass

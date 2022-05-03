@@ -4,6 +4,12 @@ Changes
 1.0 (unreleased)
 ----------------
 
+- Introduce ``IFileNode`` interface.
+  [rnix]
+
+- Set ``_changed`` to ``False`` after saving the file to disk in ``FileNode``.
+  [rnix]
+
 - Pass ``name`` and ``parent`` to ``DirectoryStorage.child_directory_factory``.
   [rnix]
 
@@ -19,9 +25,20 @@ Changes
 
 **Breaking Changes**
 
-- ``FileStorage`` and ``DirectoryStorage`` not inherits from ``_FSModeMixin``
-  respective now ``FSMode`` behavior any more. ``FSMode`` behavior must be
-  applied explicit on nodes which should provide this behavior.
+- Reduce ``IFile`` interface. It no longer inherits from ``ILeaf`` and default
+  file implementation related attributes were moved to ``IFileNode`` interface.
+  This way it is possible to implement very custom file implementations without
+  breaking the interface contract.
+  [rnix]
+
+- Rename ``FileStorage`` to ``FileNode``. It no longer inherits from
+  ``DictStorage``.
+  [rnix]
+
+- ``FileNode`` and ``DirectoryStorage`` not inherits from
+  ``_FSModeMixin`` respective now ``FSMode`` behavior any more. ``FSMode``
+  behavior must be applied explicit on nodes which should provide this
+  behavior.
   [rnix]
 
 - Rename ``_fs_path`` helper function to ``get_fs_path``.

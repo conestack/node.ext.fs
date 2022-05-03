@@ -6,10 +6,6 @@ from zope.interface import Interface
 from zope.lifecycleevent import IObjectAddedEvent
 
 
-MODE_TEXT = 0
-MODE_BINARY = 1
-
-
 class IFileAddedEvent(IObjectAddedEvent):
     """A File has been added to directory."""
 
@@ -26,7 +22,15 @@ class IFSMode(Interface):
     fs_mode = Attribute('Filesystem mode as expected by ``os.chmod``')
 
 
-class IFile(INode, ILeaf, ICallable, IFSLocation):
+class IFile(INode, ICallable, IFSLocation):
+    """Marker interface for files."""
+
+
+MODE_TEXT = 0
+MODE_BINARY = 1
+
+
+class IFileNode(IFile, ILeaf):
     """File interface."""
 
     direct_sync = Attribute(

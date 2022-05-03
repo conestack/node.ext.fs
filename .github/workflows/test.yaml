@@ -34,6 +34,7 @@ jobs:
         run: |
           pip install wheel
           pip install coverage
+          pip install https://github.com/conestack/node/archive/master.zip
           pip install -e .[test]
 
       - name: Run tests

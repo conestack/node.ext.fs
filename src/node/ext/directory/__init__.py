@@ -2,7 +2,7 @@ from node.ext.directory.directory import Directory
 from node.ext.directory.directory import DirectoryStorage
 from node.ext.directory.directory import file_factories
 from node.ext.directory.file import File
-from node.ext.directory.file import FileStorage
+from node.ext.directory.file import FileNode
 from node.ext.directory.interfaces import MODE_BINARY
 from node.ext.directory.interfaces import MODE_TEXT
 from node.ext.directory.location import FSLocation
