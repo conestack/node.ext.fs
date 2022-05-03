@@ -94,17 +94,17 @@ class FSModeObject(FSLocationObject):
 # Tests
 ###############################################################################
 
-class TestDirectory(NodeTestCase):
+class Tests(NodeTestCase):
 
     def setUp(self):
-        super(TestDirectory, self).setUp()
+        super(Tests, self).setUp()
         self.tempdir = tempfile.mkdtemp()
         handler = self.handler = Handler()
         component.provideHandler(handler, [IFile, IFileAddedEvent])
         component.provideHandler(handler, [IDirectory, IFileAddedEvent])
 
     def tearDown(self):
-        super(TestDirectory, self).tearDown()
+        super(Tests, self).tearDown()
         dummy_logger.clear()
         shutil.rmtree(self.tempdir)
 
@@ -146,6 +146,7 @@ class TestDirectory(NodeTestCase):
         with open(path, 'w') as f:
             f.write('')
         ob = FSModeObject(path=[self.tempdir, 'inexistent'])
+        self.assertTrue(IFSMode.providedBy(ob))
         self.assertEqual(ob.fs_mode, None)
         ob = FSModeObject(path=[self.tempdir, 'file'])
         ob.fs_mode = 0O777
@@ -590,9 +591,9 @@ class TestDirectory(NodeTestCase):
         directory = Directory(name=os.path.join(self.tempdir, 'root'))
         self.checkOutput("""\
         <class 'node.ext.directory.directory.Directory'>: ...root
-          <class 'node.ext.directory.directory.File'>: file.txt
+          <class 'node.ext.directory.file.File'>: file.txt
           <class 'node.ext.directory.directory.Directory'>: subdir
-            <class 'node.ext.directory.directory.File'>: subfile.txt
+            <class 'node.ext.directory.file.File'>: subfile.txt
         """, directory.treerepr())
 
         self.assertEqual(len(directory._index), 4)
@@ -605,7 +606,7 @@ class TestDirectory(NodeTestCase):
         directory = Directory(name=os.path.join(self.tempdir, 'root'))
         self.checkOutput("""\
         <class 'node.ext.directory.directory.Directory'>: ...root
-          <class 'node.ext.directory.directory.File'>: file.txt
+          <class 'node.ext.directory.file.File'>: file.txt
         """, directory.treerepr())
 
         self.assertEqual(len(directory._index), 2)

@@ -17,17 +17,17 @@ Changes
 - Introduce ``FSLocation`` plumbing behavior.
   [rnix]
 
-- Rename ``_fs_path`` helper function to ``get_fs_path``. B/C is kept.
-  [rnix]
-
-- Rename ``_fs_mode`` helper function to ``get_fs_mode``. B/C is kept.
-  [rnix]
-
 **Breaking Changes**
 
 - ``FileStorage`` and ``DirectoryStorage`` not inherits from ``_FSModeMixin``
   respective now ``FSMode`` behavior any more. ``FSMode`` behavior must be
   applied explicit on nodes which should provide this behavior.
+  [rnix]
+
+- Rename ``_fs_path`` helper function to ``get_fs_path``.
+  [rnix]
+
+- Rename ``_fs_mode`` helper function to ``get_fs_mode``.
   [rnix]
 
 

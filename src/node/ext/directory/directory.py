@@ -1,21 +1,18 @@
-from node.behaviors import DefaultInit
 from node.behaviors import DictStorage
 from node.behaviors import MappingAdopt
 from node.behaviors import MappingNode
 from node.behaviors import Reference
 from node.compat import IS_PY2
 from node.ext.directory.events import FileAddedEvent
+from node.ext.directory.file import File
 from node.ext.directory.interfaces import IDirectory
-from node.ext.directory.interfaces import IFSLocation
-from node.ext.directory.interfaces import IFSMode
 from node.ext.directory.interfaces import IFile
-from node.ext.directory.interfaces import MODE_BINARY
-from node.ext.directory.interfaces import MODE_TEXT
+from node.ext.directory.location import FSLocation
+from node.ext.directory.location import get_fs_path
+from node.ext.directory.mode import FSMode
 from node.locking import locktree
-from plumber import Behavior
 from plumber import default
 from plumber import finalize
-from plumber import plumb
 from plumber import plumbing
 from zope.component.event import objectEventNotify
 from zope.interface import implementer
@@ -25,148 +22,6 @@ import shutil
 
 
 logger = logging.getLogger('node.ext.directory')
-
-
-def get_fs_path(ob, child_path=[]):
-    # Use fs_path if provided by ob, otherwise fallback to path
-    if hasattr(ob, 'fs_path'):
-        return ob.fs_path + child_path
-    return ob.path + child_path
-
-
-# B/C
-_fs_path = get_fs_path
-
-
-@implementer(IFSLocation)
-class FSLocation(Behavior):
-
-    @property
-    def fs_path(self):
-        if getattr(self, '_fs_path', None) is not None:
-            return self._fs_path
-        parent = self.parent
-        if parent is not None and hasattr(parent, 'fs_path'):
-            return self.parent.fs_path + [self.name]
-        return self.path
-
-    @default
-    @fs_path.setter
-    def fs_path(self, path):
-        self._fs_path = path
-
-
-def get_fs_mode(node):
-    fs_path = os.path.join(*get_fs_path(node))
-    if not os.path.exists(fs_path):
-        return None
-    return os.stat(fs_path).st_mode & 0o777
-
-
-# B/C
-_fs_mode = get_fs_mode
-
-
-@implementer(IFSMode)
-class FSMode(Behavior):
-
-    @property
-    def fs_mode(self):
-        if not hasattr(self, '_fs_mode'):
-            fs_mode = get_fs_mode(self)
-            if fs_mode is None:
-                return None
-            self._fs_mode = fs_mode
-        return self._fs_mode
-
-    @default
-    @fs_mode.setter
-    def fs_mode(self, mode):
-        self._fs_mode = mode
-
-    @plumb
-    def __call__(next_, self):
-        # Change file system mode if set
-        next_(self)
-        fs_mode = self.fs_mode
-        if fs_mode is not None:
-            os.chmod(os.path.join(*get_fs_path(self)), fs_mode)
-
-
-@implementer(IFile)
-class FileStorage(DictStorage, FSLocation):
-    direct_sync = default(False)
-
-    @property
-    def mode(self):
-        if not hasattr(self, '_mode'):
-            self.mode = MODE_TEXT
-        return self._mode
-
-    @default
-    @mode.setter
-    def mode(self, mode):
-        self._mode = mode
-
-    @property
-    def data(self):
-        if not hasattr(self, '_data'):
-            if self.mode == MODE_BINARY:
-                self._data = None
-            else:
-                self._data = ''
-            file_path = os.path.join(*get_fs_path(self))
-            if os.path.exists(file_path):
-                mode = self.mode == MODE_BINARY and 'rb' or 'r'
-                with open(file_path, mode) as file:
-                    self._data = file.read()
-        return self._data
-
-    @default
-    @data.setter
-    def data(self, data):
-        setattr(self, '_changed', True)
-        self._data = data
-
-    @property
-    def lines(self):
-        if self.mode == MODE_BINARY:
-            raise RuntimeError('Cannot read lines from binary file.')
-        if not self.data:
-            return []
-        return self.data.split('\n')
-
-    @default
-    @lines.setter
-    def lines(self, lines):
-        if self.mode == MODE_BINARY:
-            raise RuntimeError('Cannot write lines to binary file.')
-        self.data = '\n'.join(lines)
-
-    @finalize
-    @locktree
-    def __call__(self):
-        file_path = os.path.join(*get_fs_path(self))
-        exists = os.path.exists(file_path)
-        # Only write file if it's data has changed or not exists yet
-        if hasattr(self, '_changed') or not exists:
-            write_mode = self.mode == MODE_BINARY and 'wb' or 'w'
-            with open(file_path, write_mode) as file:
-                file.write(self.data)
-                if self.direct_sync:
-                    file.flush()
-                    os.fsync(file.fileno())
-
-
-@plumbing(
-    MappingAdopt,
-    DefaultInit,
-    Reference,  # XXX: remove from default file
-    MappingNode,
-    FSMode,
-    FileStorage)
-class File(object):
-    pass
 
 
 # global file factories
@@ -330,11 +185,7 @@ class DirectoryStorage(DictStorage, FSLocation):
     @default
     def _factory_for_ending(self, name):
         def match(keys, key):
-            keys = sorted(
-                keys,
-                key=lambda x: len(x),
-                reverse=True
-            )
+            keys = sorted(keys, key=lambda x: len(x), reverse=True)
             for possible in keys:
                 if key.endswith(possible):
                     return possible
