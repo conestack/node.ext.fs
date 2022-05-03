@@ -74,25 +74,21 @@ class DirectoryStorage(DictStorage, FSLocation):
     @locktree
     def __call__(self):
         if IDirectory.providedBy(self):
-            dir_path = os.path.join(*get_fs_path(self))
-            if os.path.exists(dir_path) and not os.path.isdir(dir_path):
+            path = os.path.join(*get_fs_path(self))
+            if not os.path.exists(path):
+                os.mkdir(path)
+            elif not os.path.isdir(path):
                 raise KeyError(
-                    'Attempt to create a directory with name which already '
-                    'exists as file')
-            try:
-                os.mkdir(dir_path)
-            except OSError as e:
-                # Ignore ``already exists``.
-                if e.errno != 17:
-                    raise e                                   # pragma no cover
+                    'Attempt to create a directory with name '
+                    'which already exists as file'
+                )
         while self._deleted:
-            name = self._deleted.pop()
-            abs_path = os.path.join(*get_fs_path(self, [name]))
-            if os.path.exists(abs_path):
-                if os.path.isdir(abs_path):
-                    shutil.rmtree(abs_path)
+            path = os.path.join(*get_fs_path(self, [self._deleted.pop()]))
+            if os.path.exists(path):
+                if os.path.isdir(path):
+                    shutil.rmtree(path)
                 else:
-                    os.remove(abs_path)
+                    os.remove(path)
         for value in self.values():
             if IDirectory.providedBy(value):
                 value()
