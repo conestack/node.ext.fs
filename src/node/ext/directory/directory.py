@@ -1,7 +1,7 @@
 from node.behaviors import DictStorage
 from node.behaviors import MappingAdopt
 from node.behaviors import MappingNode
-from node.behaviors import Reference
+from node.behaviors import MappingReference
 from node.compat import IS_PY2
 from node.ext.directory.events import FileAddedEvent
 from node.ext.directory.file import File
@@ -108,7 +108,7 @@ class DirectoryStorage(DictStorage, FSLocation):
             #      actually not how life cycle events shall behave. Fix in
             #      node.ext.zcml and node.ext.python, remove event notification
             #      here, use node.behaviors.Lifecycle and suppress event
-            #      notification in self._create_child_by_factory
+            #      notification in self.__getitem__
             objectEventNotify(FileAddedEvent(value))
             return
         raise ValueError('Unknown child node.')
@@ -119,7 +119,7 @@ class DirectoryStorage(DictStorage, FSLocation):
         try:
             return self.storage[name]
         except KeyError:
-            self._create_child_by_factory(name)
+            self[name] = self._create_child_by_factory(name)
         return self.storage[name]
 
     @default
@@ -127,27 +127,21 @@ class DirectoryStorage(DictStorage, FSLocation):
     def _create_child_by_factory(self, name):
         filepath = os.path.join(*get_fs_path(self, [name]))
         if not os.path.exists(filepath):
-            return
+            raise KeyError(name)
         if os.path.isdir(filepath):
-            # XXX: to suppress event notify
-            self[name] = self.child_directory_factory(name=name, parent=self)
-            return
+            return self.child_directory_factory(name=name, parent=self)
         factory = self._factory_for_ending(name)
         if not factory:
-            # XXX: to suppress event notify
-            self[name] = self.default_file_factory()
-            return
+            return self.default_file_factory(name=name, parent=self)
         try:
-            # XXX: to suppress event notify
-            self[name] = factory()
+            return factory(name=name, parent=self)
         except TypeError as e:
-            # happens if the factory cannot be called without args, in this
-            # case we treat it as a flat file.
-            # XXX: to suppress event notify
+            # happens if the factory cannot be called with name and parent
+            # keyword arguments, in this case we treat it as a flat file.
             logger.error(
                 'File creation by factory failed. Fall back to ``File``. '
                 'Reason: {}'.format(e))
-            self[name] = File()
+            return File(name=name, parent=self)
 
     @finalize
     def __delitem__(self, name):
@@ -199,7 +193,7 @@ class DirectoryStorage(DictStorage, FSLocation):
 
 @plumbing(
     MappingAdopt,
-    Reference,  # XXX: remove from default directory
+    MappingReference,
     MappingNode,
     FSMode,
     DirectoryStorage)

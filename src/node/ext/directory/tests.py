@@ -305,8 +305,8 @@ class Tests(NodeTestCase):
         class SaneFile(File):
             pass
 
-        def sane_factory():
-            return SaneFile()
+        def sane_factory(name, parent):
+            return SaneFile(name, parent)
 
         filepath = os.path.join(self.tempdir, 'file.txt')
         with open(filepath, 'w') as f:

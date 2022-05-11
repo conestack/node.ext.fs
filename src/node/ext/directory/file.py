@@ -1,6 +1,6 @@
 from node.behaviors import DefaultInit
 from node.behaviors import Node
-from node.behaviors import Reference
+from node.behaviors import NodeReference
 from node.ext.directory.interfaces import IFileNode
 from node.ext.directory.interfaces import MODE_BINARY
 from node.ext.directory.interfaces import MODE_TEXT
@@ -83,7 +83,7 @@ class FileNode(Node, FSLocation):
 
 @plumbing(
     DefaultInit,
-    Reference,  # XXX: remove from default file
+    NodeReference,
     FSMode,
     FileNode)
 class File(object):
