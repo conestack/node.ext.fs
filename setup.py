@@ -34,7 +34,7 @@ setup(
         'Programming Language :: Python :: 3.9',
         'Programming Language :: Python :: 3.10'
     ],
-    keywords='node directory file',
+    keywords='node file system',
     author='Node Contributors',
     author_email='dev@conestack.org',
     url='http://github.com/conestack/node.ext.fs',

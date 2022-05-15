@@ -1,5 +1,5 @@
 node.ext.fs
-==================
+===========
 
 .. image:: https://img.shields.io/pypi/v/node.ext.fs.svg
     :target: https://pypi.python.org/pypi/node.ext.fs
@@ -17,7 +17,8 @@ node.ext.fs
 Overview
 --------
 
-``node.ext.fs`` is a node implementation for file system directories.
+``node.ext.fs`` is a node implementation for file system directories. It is
+the successor of `node.ext.directory <https://pypi.python.org/pypi/node.ext.directory>`_.
 
 For more information about ``node`` see
 `https://pypi.python.org/pypi/node <https://pypi.python.org/pypi/node>`_.

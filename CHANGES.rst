@@ -25,6 +25,9 @@ Changes
 
 **Breaking Changes**
 
+- Remove ``IFileAddedEvent`` and ``node.ext.fs.events`` module. If you need
+  lifecycle events, use ``node.behaviors.Lifecycle`` instead.
+
 - Reduce ``IFile`` interface. It no longer inherits from ``ILeaf`` and default
   file implementation related attributes were moved to ``IFileNode`` interface.
   This way it is possible to implement very custom file implementations without

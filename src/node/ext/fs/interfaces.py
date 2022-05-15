@@ -3,11 +3,6 @@ from node.interfaces import ILeaf
 from node.interfaces import INode
 from zope.interface import Attribute
 from zope.interface import Interface
-from zope.lifecycleevent import IObjectAddedEvent
-
-
-class IFileAddedEvent(IObjectAddedEvent):
-    """A File has been added to directory."""
 
 
 class IFSLocation(Interface):

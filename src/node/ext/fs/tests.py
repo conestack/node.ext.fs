@@ -3,7 +3,7 @@ from node.behaviors import DefaultInit
 from node.behaviors import DictStorage
 from node.behaviors import MappingAdopt
 from node.behaviors import MappingNode
-from node.behaviors import Reference
+from node.behaviors import MappingReference
 from node.compat import IS_PY2
 from node.ext.fs import Directory
 from node.ext.fs import FSLocation
@@ -14,7 +14,6 @@ from node.ext.fs import MODE_TEXT
 from node.ext.fs import directory
 from node.ext.fs import get_fs_mode
 from node.ext.fs import get_fs_path
-from node.ext.fs.events import IFileAddedEvent
 from node.ext.fs.interfaces import IDirectory
 from node.ext.fs.interfaces import IFSLocation
 from node.ext.fs.interfaces import IFSMode
@@ -34,16 +33,6 @@ import unittest
 ###############################################################################
 # Mock objects
 ###############################################################################
-
-class Handler(object):
-    handled = []
-
-    def __call__(self, obj, event):
-        self.handled.append(event)
-
-    def clear(self):
-        self.handled = []
-
 
 class DummyLogger(object):
     log_levels = {
@@ -99,9 +88,6 @@ class Tests(NodeTestCase):
     def setUp(self):
         super(Tests, self).setUp()
         self.tempdir = tempfile.mkdtemp()
-        handler = self.handler = Handler()
-        component.provideHandler(handler, [IFile, IFileAddedEvent])
-        component.provideHandler(handler, [IDirectory, IFileAddedEvent])
 
     def tearDown(self):
         super(Tests, self).tearDown()
@@ -515,7 +501,7 @@ class Tests(NodeTestCase):
         @plumbing(
             MappingAdopt,
             DefaultInit,
-            Reference,
+            MappingReference,
             MappingNode,
             DictStorage)
         class NoFile(object):
@@ -610,23 +596,6 @@ class Tests(NodeTestCase):
         """, directory.treerepr())
 
         self.assertEqual(len(directory._index), 2)
-
-    def test_lifecycle_events(self):
-        # XXX: Currently file added event is triggered for both IFile and
-        #      IDirectory implementing instance, it also gets triggered for
-        #      existing files and directories on __getitem__. Further lifecycle
-        #      events are only triggered on __setitem__
-        # - Adopt code that node.behaviors.Lifecycle is used
-        # - Suppress events on __getitem__?
-        self.handler.clear()
-        directory = Directory(name=os.path.join(self.tempdir, 'root'))
-        directory['file.txt'] = File()
-        subdir = directory['subdir'] = Directory()
-        self.assertEqual(len(self.handler.handled), 2)
-        self.assertEqual(self.handler.handled[0].object.name, 'file.txt')
-        self.assertTrue(IFileAddedEvent.providedBy(self.handler.handled[0]))
-        self.assertEqual(self.handler.handled[1].object.name, 'subdir')
-        self.assertTrue(IFileAddedEvent.providedBy(self.handler.handled[1]))
 
 
 if __name__ == '__main__':

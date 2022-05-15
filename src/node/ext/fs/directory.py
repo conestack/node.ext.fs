@@ -3,7 +3,6 @@ from node.behaviors import MappingAdopt
 from node.behaviors import MappingNode
 from node.behaviors import MappingReference
 from node.compat import IS_PY2
-from node.ext.fs.events import FileAddedEvent
 from node.ext.fs.file import File
 from node.ext.fs.interfaces import IDirectory
 from node.ext.fs.interfaces import IFile
@@ -14,7 +13,6 @@ from node.locking import locktree
 from plumber import default
 from plumber import finalize
 from plumber import plumbing
-from zope.component.event import objectEventNotify
 from zope.interface import implementer
 import logging
 import os
@@ -98,14 +96,6 @@ class DirectoryStorage(DictStorage, FSLocation):
         name = _encode_name(self.fs_encoding, name)
         if IFile.providedBy(value) or IDirectory.providedBy(value):
             self.storage[name] = value
-            # XXX: This event is currently used in node.ext.zcml and
-            #      node.ext.python to trigger parsing. But this behavior
-            #      requires the event to be triggered on __getitem__ which is
-            #      actually not how life cycle events shall behave. Fix in
-            #      node.ext.zcml and node.ext.python, remove event notification
-            #      here, use node.behaviors.Lifecycle and suppress event
-            #      notification in self.__getitem__
-            objectEventNotify(FileAddedEvent(value))
             return
         raise ValueError('Unknown child node.')
 
