@@ -1,4 +1,4 @@
-name: Test node.ext.file
+name: Test node.ext.fs
 
 on:
   push:
@@ -40,9 +40,9 @@ jobs:
       - name: Run tests
         run: |
           python --version
-          python -m node.ext.file.tests
+          python -m node.ext.fs.tests
 
       - name: Run coverage
         run: |
-          coverage run --source=src/node/ext/file -m node.ext.file.tests
+          coverage run --source=src/node/ext/file -m node.ext.fs.tests
           coverage report --fail-under=100

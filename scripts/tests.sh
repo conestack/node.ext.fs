@@ -4,7 +4,7 @@ function run_tests {
     local target=$1
 
     if [ -e "$target" ]; then
-        ./$target/bin/python -m node.ext.file.tests
+        ./$target/bin/python -m node.ext.fs.tests
     else
         echo "Target $target not found."
     fi
