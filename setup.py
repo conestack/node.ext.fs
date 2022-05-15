@@ -18,7 +18,7 @@ longdesc = '\n\n'.join([read_file(name) for name in [
 
 
 setup(
-    name='node.ext.directory',
+    name='node.ext.fs',
     version=version,
     description=shortdesc,
     long_description=longdesc,
@@ -37,7 +37,7 @@ setup(
     keywords='node directory file',
     author='Node Contributors',
     author_email='dev@conestack.org',
-    url='http://github.com/conestack/node.ext.directory',
+    url='http://github.com/conestack/node.ext.fs',
     license='Simplified BSD',
     packages=find_packages('src'),
     package_dir={'': 'src'},
@@ -48,5 +48,5 @@ setup(
         'node>=1.0',
         'setuptools'
     ],
-    test_suite='node.ext.directory.tests'
+    test_suite='node.ext.fs.tests'
 )
