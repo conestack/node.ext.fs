@@ -5,26 +5,26 @@ from node.behaviors import MappingAdopt
 from node.behaviors import MappingNode
 from node.behaviors import Reference
 from node.compat import IS_PY2
-from node.ext.directory import Directory
-from node.ext.directory import FSLocation
-from node.ext.directory import FSMode
-from node.ext.directory import File
-from node.ext.directory import MODE_BINARY
-from node.ext.directory import MODE_TEXT
-from node.ext.directory import directory
-from node.ext.directory import get_fs_mode
-from node.ext.directory import get_fs_path
-from node.ext.directory.events import IFileAddedEvent
-from node.ext.directory.interfaces import IDirectory
-from node.ext.directory.interfaces import IFSLocation
-from node.ext.directory.interfaces import IFSMode
-from node.ext.directory.interfaces import IFile
+from node.ext.fs import Directory
+from node.ext.fs import FSLocation
+from node.ext.fs import FSMode
+from node.ext.fs import File
+from node.ext.fs import MODE_BINARY
+from node.ext.fs import MODE_TEXT
+from node.ext.fs import directory
+from node.ext.fs import get_fs_mode
+from node.ext.fs import get_fs_path
+from node.ext.fs.events import IFileAddedEvent
+from node.ext.fs.interfaces import IDirectory
+from node.ext.fs.interfaces import IFSLocation
+from node.ext.fs.interfaces import IFSMode
+from node.ext.fs.interfaces import IFile
 from node.tests import NodeTestCase
 from node.tests import patch
 from plumber import plumbing
 from zope import component
 import logging
-import node.ext.directory
+import node.ext.fs
 import os
 import shutil
 import tempfile
@@ -251,7 +251,7 @@ class Tests(NodeTestCase):
         # Factories. resolved by registration length, shortest last
         self.checkOutput("""\
         {...}
-        """, str(node.ext.directory.file_factories))
+        """, str(node.ext.fs.file_factories))
 
         dir = Directory(name=self.tempdir)
         self.assertEqual(dir.factories, {})
@@ -263,8 +263,8 @@ class Tests(NodeTestCase):
         def dummy_foo_factory():
             pass  # pragma no cover
 
-        node.ext.directory.file_factories['.txt'] = dummy_txt_factory
-        node.ext.directory.file_factories['foo.txt'] = dummy_foo_factory
+        node.ext.fs.file_factories['.txt'] = dummy_txt_factory
+        node.ext.fs.file_factories['foo.txt'] = dummy_foo_factory
         self.assertEqual(dir._factory_for_ending('bar.txt'), dummy_txt_factory)
         self.assertEqual(dir._factory_for_ending('foo.txt'), dummy_foo_factory)
 
@@ -290,8 +290,8 @@ class Tests(NodeTestCase):
             dummy_local_foo_factory
         )
 
-        del node.ext.directory.file_factories['.txt']
-        del node.ext.directory.file_factories['foo.txt']
+        del node.ext.fs.file_factories['.txt']
+        del node.ext.fs.file_factories['foo.txt']
         del dir.factories['.txt']  # needed?
         del dir.factories['foo.txt']  # needed?
 
@@ -413,9 +413,9 @@ class Tests(NodeTestCase):
         directory['subdir2'] = Directory()
 
         self.checkOutput("""\
-        <class 'node.ext.directory.directory.Directory'>: /.../root
-          <class 'node.ext.directory.directory.Directory'>: subdir1
-          <class 'node.ext.directory.directory.Directory'>: subdir2
+        <class 'node.ext.fs.directory.Directory'>: /.../root
+          <class 'node.ext.fs.directory.Directory'>: subdir1
+          <class 'node.ext.fs.directory.Directory'>: subdir2
         """, directory.treerepr())
 
         fs_path = os.path.join(*directory.path)
@@ -430,9 +430,9 @@ class Tests(NodeTestCase):
 
         directory = Directory(name=os.path.join(self.tempdir, 'root'))
         self.checkOutput("""\
-        <class 'node.ext.directory.directory.Directory'>: /.../root
-          <class 'node.ext.directory.directory.Directory'>: subdir1
-          <class 'node.ext.directory.directory.Directory'>: subdir2
+        <class 'node.ext.fs.directory.Directory'>: /.../root
+          <class 'node.ext.fs.directory.Directory'>: subdir1
+          <class 'node.ext.fs.directory.Directory'>: subdir2
         """, directory.treerepr())
 
     def test_delete_from_directory(self):
@@ -551,7 +551,7 @@ class Tests(NodeTestCase):
         Directory(name=self.tempdir, backup=True)
         self.assertEqual(dummy_logger.messages, [
             'WARNING: ``backup`` handling has been removed from '
-            '``Directory`` implementation as of node.ext.directory 0.7'
+            '``Directory`` implementation as of node.ext.fs 0.7'
         ])
         dummy_logger.clear()
 
@@ -564,7 +564,7 @@ class Tests(NodeTestCase):
         )
         self.assertEqual(dummy_logger.messages, [
             'WARNING: ``backup`` handling has been removed from '
-            '``Directory`` implementation as of node.ext.directory 0.7'
+            '``Directory`` implementation as of node.ext.fs 0.7'
         ])
 
     def test_fs_path_keyword_argument(self):
@@ -590,10 +590,10 @@ class Tests(NodeTestCase):
         directory()
         directory = Directory(name=os.path.join(self.tempdir, 'root'))
         self.checkOutput("""\
-        <class 'node.ext.directory.directory.Directory'>: ...root
-          <class 'node.ext.directory.file.File'>: file.txt
-          <class 'node.ext.directory.directory.Directory'>: subdir
-            <class 'node.ext.directory.file.File'>: subfile.txt
+        <class 'node.ext.fs.directory.Directory'>: ...root
+          <class 'node.ext.fs.file.File'>: file.txt
+          <class 'node.ext.fs.directory.Directory'>: subdir
+            <class 'node.ext.fs.file.File'>: subfile.txt
         """, directory.treerepr())
 
         self.assertEqual(len(directory._index), 4)
@@ -605,8 +605,8 @@ class Tests(NodeTestCase):
         directory()
         directory = Directory(name=os.path.join(self.tempdir, 'root'))
         self.checkOutput("""\
-        <class 'node.ext.directory.directory.Directory'>: ...root
-          <class 'node.ext.directory.file.File'>: file.txt
+        <class 'node.ext.fs.directory.Directory'>: ...root
+          <class 'node.ext.fs.file.File'>: file.txt
         """, directory.treerepr())
 
         self.assertEqual(len(directory._index), 2)
@@ -630,7 +630,7 @@ class Tests(NodeTestCase):
 
 
 if __name__ == '__main__':
-    from node.ext.directory import tests
+    from node.ext.fs import tests
     import sys
 
     suite = unittest.TestSuite()

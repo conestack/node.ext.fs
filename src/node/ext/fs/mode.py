@@ -1,5 +1,5 @@
-from node.ext.directory.interfaces import IFSMode
-from node.ext.directory.location import get_fs_path
+from node.ext.fs.interfaces import IFSMode
+from node.ext.fs.location import get_fs_path
 from plumber import Behavior
 from plumber import default
 from plumber import plumb

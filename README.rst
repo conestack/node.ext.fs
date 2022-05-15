@@ -1,23 +1,23 @@
-node.ext.directory
+node.ext.fs
 ==================
 
-.. image:: https://img.shields.io/pypi/v/node.ext.directory.svg
-    :target: https://pypi.python.org/pypi/node.ext.directory
+.. image:: https://img.shields.io/pypi/v/node.ext.fs.svg
+    :target: https://pypi.python.org/pypi/node.ext.fs
     :alt: Latest PyPI version
 
-.. image:: https://img.shields.io/pypi/dm/node.ext.directory.svg
-    :target: https://pypi.python.org/pypi/node.ext.directory
+.. image:: https://img.shields.io/pypi/dm/node.ext.fs.svg
+    :target: https://pypi.python.org/pypi/node.ext.fs
     :alt: Number of PyPI downloads
 
-.. image:: https://github.com/conestack/node.ext.directory/actions/workflows/test.yaml/badge.svg
-    :target: https://github.com/conestack/node.ext.directory/actions/workflows/test.yaml
-    :alt: Test node.ext.directory
+.. image:: https://github.com/conestack/node.ext.fs/actions/workflows/test.yaml/badge.svg
+    :target: https://github.com/conestack/node.ext.fs/actions/workflows/test.yaml
+    :alt: Test node.ext.fs
 
 
 Overview
 --------
 
-``node.ext.directory`` is a node implementation for file system directories.
+``node.ext.fs`` is a node implementation for file system directories.
 
 For more information about ``node`` see
 `https://pypi.python.org/pypi/node <https://pypi.python.org/pypi/node>`_.
@@ -30,7 +30,7 @@ Create new file:
 
 .. code-block:: python
 
-    from node.ext.directory import File
+    from node.ext.fs import File
 
     file_path = 'file.txt'
     f = File(name=file_path)
@@ -62,7 +62,7 @@ Files with binary data:
 
 .. code-block:: python
 
-    from node.ext.directory import MODE_BINARY
+    from node.ext.fs import MODE_BINARY
 
     file_path = 'file.txt'
     f = File(name=file_path)
@@ -79,7 +79,7 @@ Create directory:
 
 .. code-block:: python
 
-    from node.ext.directory import Directory
+    from node.ext.fs import Directory
 
     dir_path = '.'
     d = Directory(name=dir_path)
@@ -104,9 +104,9 @@ Read existing directory:
 .. code-block:: pycon
 
     >>> d.printtree()
-    <class 'node.ext.directory.directory.Directory'>: .
-      <class 'node.ext.directory.directory.File'>: file.txt
-      <class 'node.ext.directory.directory.Directory'>: sub
+    <class 'node.ext.fs.directory.Directory'>: .
+      <class 'node.ext.fs.directory.File'>: file.txt
+      <class 'node.ext.fs.directory.Directory'>: sub
 
 Define file factories:
 
@@ -132,7 +132,7 @@ when reading .py files, PyFile is used to instanciate children:
 
     >>> d = Directory(name='.', factories={'.py': PyFile})
     >>> d.printtree()
-    <class 'node.ext.directory.directory.Directory'>: .
+    <class 'node.ext.fs.directory.Directory'>: .
       <class '...PyFile'>: foo.py
 
 

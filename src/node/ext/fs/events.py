@@ -1,4 +1,4 @@
-from node.ext.directory.interfaces import IFileAddedEvent
+from node.ext.fs.interfaces import IFileAddedEvent
 from zope.interface import implementer
 from zope.lifecycleevent import ObjectAddedEvent
 

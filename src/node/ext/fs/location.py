@@ -1,4 +1,4 @@
-from node.ext.directory.interfaces import IFSLocation
+from node.ext.fs.interfaces import IFSLocation
 from plumber import Behavior
 from plumber import default
 from zope.interface import implementer

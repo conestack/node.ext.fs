@@ -3,13 +3,13 @@ from node.behaviors import MappingAdopt
 from node.behaviors import MappingNode
 from node.behaviors import MappingReference
 from node.compat import IS_PY2
-from node.ext.directory.events import FileAddedEvent
-from node.ext.directory.file import File
-from node.ext.directory.interfaces import IDirectory
-from node.ext.directory.interfaces import IFile
-from node.ext.directory.location import FSLocation
-from node.ext.directory.location import get_fs_path
-from node.ext.directory.mode import FSMode
+from node.ext.fs.events import FileAddedEvent
+from node.ext.fs.file import File
+from node.ext.fs.interfaces import IDirectory
+from node.ext.fs.interfaces import IFile
+from node.ext.fs.location import FSLocation
+from node.ext.fs.location import get_fs_path
+from node.ext.fs.mode import FSMode
 from node.locking import locktree
 from plumber import default
 from plumber import finalize
@@ -21,7 +21,7 @@ import os
 import shutil
 
 
-logger = logging.getLogger('node.ext.directory')
+logger = logging.getLogger('node.ext.fs')
 
 
 # global file factories
@@ -74,7 +74,7 @@ class DirectoryStorage(DictStorage, FSLocation):
         if backup or hasattr(self, 'backup'):
             logger.warning(
                 '``backup`` handling has been removed from ``Directory`` '
-                'implementation as of node.ext.directory 0.7'
+                'implementation as of node.ext.fs 0.7'
             )
         # override factories if given
         if factories:

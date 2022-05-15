@@ -5,8 +5,8 @@ function run_coverage {
 
     if [ -e "$target" ]; then
         ./$target/bin/coverage run \
-            --source=src/node/ext/directory \
-            -m node.ext.directory.tests
+            --source=src/node/ext/file \
+            -m node.ext.file.tests
         ./$target/bin/coverage report
     else
         echo "Target $target not found."
