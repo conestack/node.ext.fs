@@ -25,7 +25,19 @@ logger = logging.getLogger('node.ext.directory')
 
 
 # global file factories
-file_factories = dict()
+factories = dict()
+
+# B/C
+file_factories = factories
+
+
+def _encode_name(fs_encoding, name):
+    name = (
+        name.encode(fs_encoding)
+        if IS_PY2 and isinstance(name, unicode)
+        else name
+    )
+    return name
 
 
 @implementer(IDirectory)
@@ -64,11 +76,60 @@ class DirectoryStorage(DictStorage, FSLocation):
                 '``backup`` handling has been removed from ``Directory`` '
                 'implementation as of node.ext.directory 0.7'
             )
-        # override file factories if given
+        # override factories if given
         if factories:
             self.factories = factories
         self.fs_path = fs_path
         self._deleted = list()
+
+    @finalize
+    def __getitem__(self, name):
+        name = _encode_name(self.fs_encoding, name)
+        try:
+            return self.storage[name]
+        except KeyError:
+            self[name] = self._create_child_by_factory(name)
+        return self.storage[name]
+
+    @finalize
+    def __setitem__(self, name, value):
+        if not name:
+            raise KeyError('Empty key not allowed in directories')
+        name = _encode_name(self.fs_encoding, name)
+        if IFile.providedBy(value) or IDirectory.providedBy(value):
+            self.storage[name] = value
+            # XXX: This event is currently used in node.ext.zcml and
+            #      node.ext.python to trigger parsing. But this behavior
+            #      requires the event to be triggered on __getitem__ which is
+            #      actually not how life cycle events shall behave. Fix in
+            #      node.ext.zcml and node.ext.python, remove event notification
+            #      here, use node.behaviors.Lifecycle and suppress event
+            #      notification in self.__getitem__
+            objectEventNotify(FileAddedEvent(value))
+            return
+        raise ValueError('Unknown child node.')
+
+    @finalize
+    def __delitem__(self, name):
+        name = _encode_name(self.fs_encoding, name)
+        if os.path.exists(os.path.join(*get_fs_path(self, [name]))):
+            self._deleted.append(name)
+        del self.storage[name]
+
+    @finalize
+    def __iter__(self):
+        try:
+            existing = set(os.listdir(os.path.join(*get_fs_path(self))))
+        except OSError:
+            existing = set()
+        for key in self.storage:
+            existing.add(key)
+        for key in existing:
+            if key in self._deleted:
+                continue
+            if key in self.ignores:
+                continue
+            yield key
 
     @finalize
     @locktree
@@ -95,33 +156,6 @@ class DirectoryStorage(DictStorage, FSLocation):
             elif IFile.providedBy(value):
                 value()
 
-    @finalize
-    def __setitem__(self, name, value):
-        if not name:
-            raise KeyError('Empty key not allowed in directories')
-        name = self._encode_name(name)
-        if IFile.providedBy(value) or IDirectory.providedBy(value):
-            self.storage[name] = value
-            # XXX: This event is currently used in node.ext.zcml and
-            #      node.ext.python to trigger parsing. But this behavior
-            #      requires the event to be triggered on __getitem__ which is
-            #      actually not how life cycle events shall behave. Fix in
-            #      node.ext.zcml and node.ext.python, remove event notification
-            #      here, use node.behaviors.Lifecycle and suppress event
-            #      notification in self.__getitem__
-            objectEventNotify(FileAddedEvent(value))
-            return
-        raise ValueError('Unknown child node.')
-
-    @finalize
-    def __getitem__(self, name):
-        name = self._encode_name(name)
-        try:
-            return self.storage[name]
-        except KeyError:
-            self[name] = self._create_child_by_factory(name)
-        return self.storage[name]
-
     @default
     @locktree
     def _create_child_by_factory(self, name):
@@ -142,35 +176,6 @@ class DirectoryStorage(DictStorage, FSLocation):
                 'File creation by factory failed. Fall back to ``File``. '
                 'Reason: {}'.format(e))
             return File(name=name, parent=self)
-
-    @finalize
-    def __delitem__(self, name):
-        name = self._encode_name(name)
-        if os.path.exists(os.path.join(*get_fs_path(self, [name]))):
-            self._deleted.append(name)
-        del self.storage[name]
-
-    @finalize
-    def __iter__(self):
-        try:
-            existing = set(os.listdir(os.path.join(*get_fs_path(self))))
-        except OSError:
-            existing = set()
-        for key in self.storage:
-            existing.add(key)
-        for key in existing:
-            if key in self._deleted:
-                continue
-            if key in self.ignores:
-                continue
-            yield key
-
-    @default
-    def _encode_name(self, name):
-        name = name.encode(self.fs_encoding) \
-            if IS_PY2 and isinstance(name, unicode) \
-            else name
-        return name
 
     @default
     def _factory_for_ending(self, name):
