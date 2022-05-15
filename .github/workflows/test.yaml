@@ -44,5 +44,5 @@ jobs:
 
       - name: Run coverage
         run: |
-          coverage run --source=src/node/ext/file -m node.ext.fs.tests
+          coverage run --source=src/node/ext/fs -m node.ext.fs.tests
           coverage report --fail-under=100
