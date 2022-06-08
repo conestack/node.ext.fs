@@ -14,7 +14,6 @@ from node.ext.fs import File
 from node.ext.fs import FileNode
 from node.ext.fs import MODE_BINARY
 from node.ext.fs import MODE_TEXT
-from node.ext.fs import directory
 from node.ext.fs import get_fs_mode
 from node.ext.fs import get_fs_path
 from node.ext.fs.interfaces import IDirectory
@@ -22,10 +21,7 @@ from node.ext.fs.interfaces import IFSLocation
 from node.ext.fs.interfaces import IFSMode
 from node.ext.fs.interfaces import IFile
 from node.tests import NodeTestCase
-from node.tests import patch
 from plumber import plumbing
-import logging
-import node.ext.fs
 import os
 import shutil
 import tempfile
@@ -35,35 +31,6 @@ import unittest
 ###############################################################################
 # Mock objects
 ###############################################################################
-
-class DummyLogger(object):
-    log_levels = {
-        10: 'DEBUG',
-        20: 'INFO',
-        30: 'WARNING',
-        40: 'ERROR',
-    }
-
-    def __init__(self):
-        self.messages = list()
-
-    def clear(self):
-        self.messages = list()
-
-    def log(self, level, message):
-        self.messages.append(
-            '{0}: {1}'.format(self.log_levels[level], message).strip()
-        )
-
-    def warning(self, message):
-        self.log(logging.WARNING, message)
-
-    def error(self, message):
-        self.log(logging.ERROR, message)
-
-
-dummy_logger = DummyLogger()
-
 
 @plumbing(FSLocation)
 class FSLocationObject(object):
@@ -116,7 +83,6 @@ class Tests(NodeTestCase):
 
     def tearDown(self):
         super(Tests, self).tearDown()
-        dummy_logger.clear()
         shutil.rmtree(self.tempdir)
 
     def test_get_fs_path(self):
@@ -211,13 +177,19 @@ class Tests(NodeTestCase):
         file = BinaryFile(name=filepath)
         self.assertEqual(file.data, None)
 
-        err = self.expectError(RuntimeError, lambda: file.lines)
-        self.assertEqual(str(err), 'Cannot read lines from binary file.')
+        with self.assertRaises(RuntimeError) as arc:
+            file.lines
+        self.assertEqual(
+            str(arc.exception),
+            'Cannot read lines from binary file.'
+        )
 
-        def set_lines_fails():
+        with self.assertRaises(RuntimeError) as arc:
             file.lines = []
-        err = self.expectError(RuntimeError, set_lines_fails)
-        self.assertEqual(str(err), 'Cannot write lines to binary file.')
+        self.assertEqual(
+            str(arc.exception),
+            'Cannot write lines to binary file.'
+        )
 
         file.data = b'\x00\x00'
         file()
@@ -257,7 +229,6 @@ class Tests(NodeTestCase):
         expected = '\xc3\xa4' if IS_PY2 else u'ä'
         self.assertEqual(directory[u'ä'].name, expected)
 
-    @patch(directory, 'logger', dummy_logger)
     def test_file_factories(self):
         class TextFile(File):
             pass
@@ -326,11 +297,12 @@ class Tests(NodeTestCase):
         self.assertFalse(os.path.isdir(invalid_dir))
 
         directory = Directory(name=invalid_dir)
-        err = self.expectError(KeyError, directory)
+        with self.assertRaises(KeyError) as arc:
+            directory()
         self.checkOutput("""
         'Attempt to create directory with name "...invalid_dir" which already
         exists as file.'
-        """, str(err))
+        """, str(arc.exception))
 
     def test_directory_persistence(self):
         dirpath = os.path.join(self.tempdir, 'root')
@@ -362,10 +334,12 @@ class Tests(NodeTestCase):
         # Create a directory and add sub directories
         directory = Directory(name=os.path.join(self.tempdir, 'root'))
 
-        def add_directory_fails():
+        with self.assertRaises(KeyError) as arc:
             directory[''] = Directory()
-        err = self.expectError(KeyError, add_directory_fails)
-        self.assertEqual(str(err), '\'Empty key not allowed in directories\'')
+        self.assertEqual(
+            str(arc.exception),
+            "'Empty key not allowed in directories'"
+        )
 
         directory['subdir1'] = Directory()
         directory['subdir2'] = Directory()
@@ -407,6 +381,8 @@ class Tests(NodeTestCase):
         )
 
         del directory['file.txt']
+        with self.assertRaises(KeyError):
+            directory['file.txt']
         self.assertEqual(directory._deleted_fs_children, ['file.txt'])
         self.assertEqual(
             sorted(os.listdir(self.tempdir)),
@@ -423,6 +399,13 @@ class Tests(NodeTestCase):
         self.assertEqual(directory._deleted_fs_children, [])
         self.assertEqual(sorted(os.listdir(self.tempdir)), [])
 
+        directory['file.txt'] = File()
+        directory()
+        del directory['file.txt']
+        self.assertEqual(directory._deleted_fs_children, ['file.txt'])
+        directory['file.txt'] = File()
+        self.assertEqual(directory._deleted_fs_children, [])
+
     def test_directory___getitem__(self):
         directory = Directory(name=os.path.join(self.tempdir))
         directory['file.txt'] = File()
@@ -437,10 +420,9 @@ class Tests(NodeTestCase):
         expected = '<Directory object \'subdir\' at '
         self.assertTrue(str(directory['subdir']).startswith(expected))
 
-        def __getitem__fails():
+        with self.assertRaises(KeyError) as arc:
             directory['inexistent']
-        err = self.expectError(KeyError, __getitem__fails)
-        self.assertEqual(str(err), '\'inexistent\'')
+        self.assertEqual(str(arc.exception), '\'inexistent\'')
 
     def test_sub_directory_permissions(self):
         directory = Directory(name=os.path.join(self.tempdir, 'root'))
@@ -481,10 +463,9 @@ class Tests(NodeTestCase):
 
         directory = Directory(name=os.path.join(self.tempdir, 'root'))
 
-        def add_child_fails():
+        with self.assertRaises(ValueError) as arc:
             directory['unknown'] = NoFile()
-        err = self.expectError(ValueError, add_child_fails)
-        self.assertEqual(str(err), (
+        self.assertEqual(str(arc.exception), (
             'Incompatible child node. ``IDirectory`` '
             'or ``IFile`` must be implemented.'
         ))
@@ -506,6 +487,9 @@ class Tests(NodeTestCase):
 
         directory = DirectoryWithIgnores(name=self.tempdir)
         self.assertEqual(list(directory.keys()), ['file2.txt'])
+
+        directory = Directory(name=self.tempdir, ignores=['file2.txt'])
+        self.assertEqual(list(directory.keys()), ['file1.txt'])
 
     def test_fs_path_keyword_argument(self):
         directory = Directory(name='foo')
@@ -556,6 +540,13 @@ class Tests(NodeTestCase):
         """, directory.treerepr())
 
         self.assertEqual(len(directory._index), 2)
+
+    def test_interfaces(self):
+        directory = Directory()
+        self.assertTrue(IDirectory.providedBy(directory))
+
+        file = File()
+        self.assertTrue(IFile.providedBy(file))
 
 
 if __name__ == '__main__':

@@ -14,12 +14,8 @@ from plumber import default
 from plumber import finalize
 from plumber import plumbing
 from zope.interface import implementer
-import logging
 import os
 import shutil
-
-
-logger = logging.getLogger('node.ext.fs')
 
 
 def _encode_name(fs_encoding, name):
