@@ -10,7 +10,7 @@ Changes
 - Set ``_changed`` to ``False`` after saving the file to disk in ``FileNode``.
   [rnix]
 
-- Pass ``name`` and ``parent`` to ``DirectoryStorage.child_directory_factory``.
+- Pass ``name`` and ``parent`` to default file and directory factories.
   [rnix]
 
 - ``DirectoryStorage`` accepts ``fs_path`` keyword argument.
@@ -25,8 +25,36 @@ Changes
 
 **Breaking Changes**
 
+- Package has been renamed from ``node.ext.directory`` to ``node.ext.fs``.
+  There are too many breaking changes for a sane deprecation path.
+  [rnix]
+
+- ``DirectoryStorage.__init__`` no longer accepts deprecated ``backup`` keyword
+  argument.
+  [rnix]
+
+- ``DirectoryStorage.child_directory_factory`` has been renamed to
+  ``default_directory_factory``
+  [rnix]
+
+- ``DirectoryStorage`` derives from ``node.behaviors.WildcardFactory`` now.
+  Own factory pattern logic working with file endings has been removed.
+  Patterns must be adopted.
+  [rnix]
+
+- Remove global ``file_factories`` and ``DirectoryStorage.file_factories``.
+  Wildcard pattern related factories are defined via
+  ``DirectoryStorage.factories`` now.
+  [rnix]
+
 - Remove ``IFileAddedEvent`` and ``node.ext.fs.events`` module. If you need
   lifecycle events, use ``node.behaviors.Lifecycle`` instead.
+  [rnix]
+
+- Basic ``File`` and ``Directory`` objects no longer use referencing related
+  plumbung behaviors. You need to define your own base objects plumbing
+  ``INodeReference`` implemeting behaviors.
+  [rnix]
 
 - Reduce ``IFile`` interface. It no longer inherits from ``ILeaf`` and default
   file implementation related attributes were moved to ``IFileNode`` interface.

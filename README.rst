@@ -109,32 +109,77 @@ Read existing directory:
       <class 'node.ext.fs.directory.File'>: file.txt
       <class 'node.ext.fs.directory.Directory'>: sub
 
-Define file factories:
+Defining the default factories for files and directories is done by setting
+``default_file_factory`` respective ``default_directory_factory``:
 
 .. code-block:: python
 
-    from node.ext import directory
-
-    class PyFile(File):
+    class CustomFile(File):
         pass
 
-    # set global factories
-    directory.file_factories['.py'] = PyFile
+    class CustomDirectory(Directory):
+        default_file_factory = CustomFile
 
-    # set local factories
-    d = Directory(name='.', factories={'.py': PyFile})
+    CustomDirectory.default_directory_factory = CustomDirectory
 
-when reading .py files, PyFile is used to instanciate children:
+    dir_path = '.'
+    d = CustomDirectory(name=dir_path)
 
 .. code-block:: pycon
 
-    >>> with open('foo.py', 'w') as f:
-    ...     f.write('#')
+    >>> d.printtree()
+    <class '...CustomDirectory'>: .
+      <class '...CustomFile'>: file.txt
+      <class '...CustomDirectory'>: sub
 
-    >>> d = Directory(name='.', factories={'.py': PyFile})
+Define wildcard factories. Factories can be defined for directories and files.
+Pattern matching is done using ``fnmatch``. See
+``node.behaviors.WildcardFactory``:
+
+.. code-block:: python
+
+    class TextFile(File):
+        pass
+
+    class LogsDirectory(Directory):
+        pass
+
+    d = Directory(
+        name='.',
+        factories={
+            '*.txt': TextFile,
+            'logs': LogsDirectory
+        })
+
+Now when reading children, factories matching the file or directory name
+patterns are used to instantiate the children, using the default factories if
+no pattern matches.
+
+.. code-block:: pycon
+
+    >>> os.mkdir('logs')
+
+    >>> os.mkdir('other')
+
+    >>> with open('file.txt', 'w') as f:
+    ...     f.write('text')
+
+    >>> with open('file.rst', 'w') as f:
+    ...     f.write('rst')
+
+    >>> d = Directory(
+    ...     name='.',
+    ...     factories={
+    ...         '*.txt': TextFile,
+    ...         'logs': LogsDirectory
+    ...     })
+
     >>> d.printtree()
     <class 'node.ext.fs.directory.Directory'>: .
-      <class '...PyFile'>: foo.py
+      <class '...File'>: file.rst
+      <class '...TextFile'>: file.txt
+      <class '...LogsDirectory'>: logs
+      <class '...Directory'>: other
 
 
 Python Versions
