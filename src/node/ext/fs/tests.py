@@ -97,11 +97,11 @@ class ReferencingFile(object):
     FSMode,
     DirectoryStorage)
 class ReferencingDirectory(object):
-    pass
+    default_file_factory = ReferencingFile
 
-
-ReferencingDirectory.default_file_factory = ReferencingFile
-ReferencingDirectory.default_directory_factory = ReferencingDirectory
+    @property
+    def default_directory_factory(self):
+        return ReferencingDirectory
 
 
 ###############################################################################
@@ -258,98 +258,46 @@ class Tests(NodeTestCase):
         self.assertEqual(directory[u'ä'].name, expected)
 
     @patch(directory, 'logger', dummy_logger)
-    def _test_file_factories(self):
-        # Factories. resolved by registration length, shortest last
-        self.checkOutput("""\
-        {...}
-        """, str(node.ext.fs.file_factories))
-
-        dir = Directory(name=self.tempdir)
-        self.assertEqual(dir.factories, {})
-        self.assertEqual(dir._factory_for_ending('foo'), None)
-
-        def dummy_txt_factory():
-            pass  # pragma no cover
-
-        def dummy_foo_factory():
-            pass  # pragma no cover
-
-        node.ext.fs.file_factories['.txt'] = dummy_txt_factory
-        node.ext.fs.file_factories['foo.txt'] = dummy_foo_factory
-        self.assertEqual(dir._factory_for_ending('bar.txt'), dummy_txt_factory)
-        self.assertEqual(dir._factory_for_ending('foo.txt'), dummy_foo_factory)
-
-        def dummy_local_txt_factory():
-            pass  # pragma no cover
-
-        dir.factories['.txt'] = dummy_local_txt_factory
-        self.assertEqual(
-            dir._factory_for_ending('bar.txt'),
-            dummy_local_txt_factory
-        )
-        self.assertEqual(
-            dir._factory_for_ending('foo.txt'),
-            dummy_foo_factory
-        )
-
-        def dummy_local_foo_factory():
-            pass  # pragma no cover
-
-        dir.factories['foo.txt'] = dummy_local_foo_factory
-        self.assertEqual(
-            dir._factory_for_ending('foo.txt'),
-            dummy_local_foo_factory
-        )
-
-        del node.ext.fs.file_factories['.txt']
-        del node.ext.fs.file_factories['foo.txt']
-        del dir.factories['.txt']  # needed?
-        del dir.factories['foo.txt']  # needed?
-
-        # Factories can be given at directory init time
-        directory = Directory(name=self.tempdir, factories={
-            '.txt': dummy_txt_factory
-        })
-        self.assertEqual(directory.factories, {'.txt': dummy_txt_factory})
-
-        # Try to read file by broken factory, falls back to ``File``
-        class SaneFile(File):
+    def test_file_factories(self):
+        class TextFile(File):
             pass
 
-        def sane_factory(name=None, parent=None):
-            return SaneFile(name=name, parent=parent)
+        class AudioFile(File):
+            pass
 
-        filepath = os.path.join(self.tempdir, 'file.txt')
-        with open(filepath, 'w') as f:
+        class LogsDirectory(Directory):
+            pass
+
+        factories = {
+            '*.txt': TextFile,
+            '*.mp3': AudioFile,
+            'logs': LogsDirectory
+        }
+
+        dir = Directory(name=self.tempdir, factories=factories)
+        self.assertEqual(dir.factory_for_pattern('foo'), None)
+        self.assertEqual(dir.factory_for_pattern('foo.txt'), TextFile)
+        self.assertEqual(dir.factory_for_pattern('foo.mp3'), AudioFile)
+        self.assertEqual(dir.factory_for_pattern('logs'), LogsDirectory)
+
+        with open(os.path.join(self.tempdir, 'foo.txt'), 'w') as f:
             f.write('')
+        with open(os.path.join(self.tempdir, 'foo.mp3'), 'w') as f:
+            f.write('')
+        with open(os.path.join(self.tempdir, 'foo'), 'w') as f:
+            f.write('')
+        os.mkdir(os.path.join(self.tempdir, 'logs'))
+        os.mkdir(os.path.join(self.tempdir, 'other'))
 
-        directory = Directory(name=self.tempdir, factories={
-            '.txt': sane_factory
-        })
-        expected = '<SaneFile object \'file.txt\' at '
-        self.assertTrue(str(directory['file.txt']).startswith(expected))
-
-        def broken_factory(param):
-            return SaneFile()  # pragma no cover
-
-        directory = Directory(name=self.tempdir, factories={
-            '.txt': broken_factory
-        })
-
-        expected = '<File object \'file.txt\' at '
-        self.assertTrue(str(directory['file.txt']).startswith(expected))
-
-        self.assertEqual(len(dummy_logger.messages), 1)
-        self.assertTrue(dummy_logger.messages[0].startswith(
-            'ERROR: File creation by factory failed.'
-        ))
-
-        # Create directory and read already created file by default factory
-        directory = Directory(name=self.tempdir)
-        self.assertEqual(list(directory.keys()), ['file.txt'])
-
-        expected = '<File object \'file.txt\' at '
-        self.assertTrue(str(directory['file.txt']).startswith(expected))
+        dir = Directory(name=self.tempdir, factories=factories)
+        self.checkOutput("""
+        <class 'node.ext.fs.directory.Directory'>: ...
+        __<class 'node.ext.fs.file.File'>: foo
+        __<class 'node.ext.fs.tests...AudioFile'>: foo.mp3
+        __<class 'node.ext.fs.tests...TextFile'>: foo.txt
+        __<class 'node.ext.fs.tests...LogsDirectory'>: logs
+        __<class 'node.ext.fs.directory.Directory'>: other
+        """, dir.treerepr(prefix='_'))
 
     def test_file_fs_path_fallback(self):
         # Path lookup on ``File`` implementations without ``fs_path`` property
@@ -586,10 +534,10 @@ class Tests(NodeTestCase):
             name=os.path.join(self.tempdir, 'root')
         )
         self.checkOutput("""\
-        <class 'node.ext.fs.directory.ReferencingDirectory'>: ...root
-          <class 'node.ext.fs.file.ReferencingFile'>: file.txt
-          <class 'node.ext.fs.directory.ReferencingDirectory'>: subdir
-            <class 'node.ext.fs.file.ReferencingFile'>: subfile.txt
+        <class 'node.ext.fs.tests.ReferencingDirectory'>: ...root
+          <class 'node.ext.fs.tests.ReferencingFile'>: file.txt
+          <class 'node.ext.fs.tests.ReferencingDirectory'>: subdir
+            <class 'node.ext.fs.tests.ReferencingFile'>: subfile.txt
         """, directory.treerepr())
 
         self.assertEqual(len(directory._index), 4)
@@ -603,8 +551,8 @@ class Tests(NodeTestCase):
             name=os.path.join(self.tempdir, 'root')
         )
         self.checkOutput("""\
-        <class 'node.ext.fs.directory.Directory'>: ...root
-          <class 'node.ext.fs.file.File'>: file.txt
+        <class 'node.ext.fs.tests.ReferencingDirectory'>: ...root
+          <class 'node.ext.fs.tests.ReferencingFile'>: file.txt
         """, directory.treerepr())
 
         self.assertEqual(len(directory._index), 2)

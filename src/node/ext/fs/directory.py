@@ -34,9 +34,13 @@ def _encode_name(fs_encoding, name):
 @implementer(IDirectory)
 class DirectoryStorage(DictStorage, WildcardFactory, FSLocation):
     fs_encoding = default('utf-8')
-    default_directory_factory = default(None)
-    default_file_factory = default(None)
+    default_file_factory = default(File)
     ignores = default(list())
+
+    @default
+    @property
+    def default_directory_factory(self):
+        return Directory
 
     @finalize
     def __init__(
@@ -44,24 +48,12 @@ class DirectoryStorage(DictStorage, WildcardFactory, FSLocation):
         name=None,
         parent=None,
         fs_path=None,
-        default_directory_factory=None,
-        default_file_factory=None,
         factories=None,
         ignores=None
     ):
         self.__name__ = name
         self.__parent__ = parent
         self.fs_path = fs_path
-        self.default_directory_factory = (
-            default_directory_factory
-            if default_directory_factory is not None
-            else Directory
-        )
-        self.default_file_factory = (
-            default_file_factory
-            if default_file_factory is not None
-            else File
-        )
         if factories is not None:
             self.factories = factories
         if ignores is not None:
