@@ -1,6 +1,5 @@
 from node.ext.fs.directory import Directory
 from node.ext.fs.directory import DirectoryStorage
-from node.ext.fs.directory import file_factories
 from node.ext.fs.file import File
 from node.ext.fs.file import FileNode
 from node.ext.fs.interfaces import MODE_BINARY

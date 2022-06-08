@@ -1,6 +1,5 @@
 from node.behaviors import DefaultInit
 from node.behaviors import Node
-from node.behaviors import NodeReference
 from node.ext.fs.interfaces import IFileNode
 from node.ext.fs.interfaces import MODE_BINARY
 from node.ext.fs.interfaces import MODE_TEXT
@@ -71,7 +70,7 @@ class FileNode(Node, FSLocation):
         file_path = os.path.join(*get_fs_path(self))
         exists = os.path.exists(file_path)
         # Only write file if it's data has changed or not exists yet
-        if hasattr(self, '_changed') or not exists:
+        if getattr(self, '_changed', False) or not exists:
             write_mode = self.mode == MODE_BINARY and 'wb' or 'w'
             with open(file_path, write_mode) as file:
                 file.write(self.data)
@@ -83,7 +82,6 @@ class FileNode(Node, FSLocation):
 
 @plumbing(
     DefaultInit,
-    NodeReference,
     FSMode,
     FileNode)
 class File(object):

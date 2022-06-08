@@ -1,6 +1,7 @@
 from node.interfaces import ICallable
 from node.interfaces import ILeaf
 from node.interfaces import INode
+from node.interfaces import IWildcardFactory
 from zope.interface import Attribute
 from zope.interface import Interface
 
@@ -17,7 +18,7 @@ class IFSMode(Interface):
     fs_mode = Attribute('Filesystem mode as expected by ``os.chmod``')
 
 
-class IFile(INode, ICallable, IFSLocation):
+class IFile(INode, ICallable, IWildcardFactory, IFSLocation):
     """Marker interface for files."""
 
 
@@ -50,17 +51,12 @@ class IDirectory(INode, ICallable, IFSLocation):
 
     fs_encoding = Attribute('Filesystem encoding. Defaults to UTF-8')
 
-    child_directory_factory = Attribute(
-        'Factory creating concrete node instances for directory children'
+    default_directory_factory = Attribute(
+        'Default factory for creating directory children'
     )
 
     default_file_factory = Attribute(
-        'Default factory creating concrete node instances for file children'
-    )
-
-    file_factories = Attribute(
-        'Dict containing file names or endings as keys with the corresponding '
-        'file node creating factory.'
+        'Default factory for creating file children'
     )
 
     ignores = Attribute('child keys to ignore')

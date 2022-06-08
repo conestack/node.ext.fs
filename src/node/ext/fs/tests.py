@@ -4,11 +4,14 @@ from node.behaviors import DictStorage
 from node.behaviors import MappingAdopt
 from node.behaviors import MappingNode
 from node.behaviors import MappingReference
+from node.behaviors import NodeReference
 from node.compat import IS_PY2
 from node.ext.fs import Directory
+from node.ext.fs import DirectoryStorage
 from node.ext.fs import FSLocation
 from node.ext.fs import FSMode
 from node.ext.fs import File
+from node.ext.fs import FileNode
 from node.ext.fs import MODE_BINARY
 from node.ext.fs import MODE_TEXT
 from node.ext.fs import directory
@@ -21,7 +24,6 @@ from node.ext.fs.interfaces import IFile
 from node.tests import NodeTestCase
 from node.tests import patch
 from plumber import plumbing
-from zope import component
 import logging
 import node.ext.fs
 import os
@@ -77,6 +79,29 @@ class FSModeObject(FSLocationObject):
 
     def __call__(self):
         pass
+
+
+@plumbing(
+    DefaultInit,
+    NodeReference,
+    FSMode,
+    FileNode)
+class ReferencingFile(object):
+    pass
+
+
+@plumbing(
+    MappingAdopt,
+    MappingReference,
+    MappingNode,
+    FSMode,
+    DirectoryStorage)
+class ReferencingDirectory(object):
+    pass
+
+
+ReferencingDirectory.default_file_factory = ReferencingFile
+ReferencingDirectory.default_directory_factory = ReferencingDirectory
 
 
 ###############################################################################
@@ -233,7 +258,7 @@ class Tests(NodeTestCase):
         self.assertEqual(directory[u'ä'].name, expected)
 
     @patch(directory, 'logger', dummy_logger)
-    def test_file_factories(self):
+    def _test_file_factories(self):
         # Factories. resolved by registration length, shortest last
         self.checkOutput("""\
         {...}
@@ -354,11 +379,10 @@ class Tests(NodeTestCase):
 
         directory = Directory(name=invalid_dir)
         err = self.expectError(KeyError, directory)
-        expected = (
-            '\'Attempt to create a directory with '
-            'name which already exists as file\''
-        )
-        self.assertEqual(str(err), expected)
+        self.checkOutput("""
+        'Attempt to create directory with name "...invalid_dir" which already
+        exists as file.'
+        """, str(err))
 
     def test_directory_persistence(self):
         dirpath = os.path.join(self.tempdir, 'root')
@@ -435,20 +459,20 @@ class Tests(NodeTestCase):
         )
 
         del directory['file.txt']
-        self.assertEqual(directory._deleted, ['file.txt'])
+        self.assertEqual(directory._deleted_fs_children, ['file.txt'])
         self.assertEqual(
             sorted(os.listdir(self.tempdir)),
             ['file.txt', 'subdir']
         )
         directory()
-        self.assertEqual(directory._deleted, [])
+        self.assertEqual(directory._deleted_fs_children, [])
         self.assertEqual(sorted(os.listdir(self.tempdir)), ['subdir'])
 
         del directory['subdir']
-        self.assertEqual(directory._deleted, ['subdir'])
+        self.assertEqual(directory._deleted_fs_children, ['subdir'])
         self.assertEqual(sorted(os.listdir(self.tempdir)), ['subdir'])
         directory()
-        self.assertEqual(directory._deleted, [])
+        self.assertEqual(directory._deleted_fs_children, [])
         self.assertEqual(sorted(os.listdir(self.tempdir)), [])
 
     def test_directory___getitem__(self):
@@ -512,7 +536,10 @@ class Tests(NodeTestCase):
         def add_child_fails():
             directory['unknown'] = NoFile()
         err = self.expectError(ValueError, add_child_fails)
-        self.assertEqual(str(err), 'Unknown child node.')
+        self.assertEqual(str(err), (
+            'Incompatible child node. ``IDirectory`` '
+            'or ``IFile`` must be implemented.'
+        ))
 
     def test_ignore_children(self):
         # Ignore children in directories
@@ -532,27 +559,6 @@ class Tests(NodeTestCase):
         directory = DirectoryWithIgnores(name=self.tempdir)
         self.assertEqual(list(directory.keys()), ['file2.txt'])
 
-    @patch(directory, 'logger', dummy_logger)
-    def test_backup_setting_removed(self):
-        Directory(name=self.tempdir, backup=True)
-        self.assertEqual(dummy_logger.messages, [
-            'WARNING: ``backup`` handling has been removed from '
-            '``Directory`` implementation as of node.ext.fs 0.7'
-        ])
-        dummy_logger.clear()
-
-        class DirectoryWithBackupFlagAsClassAttribute(Directory):
-            backup = False
-
-        DirectoryWithBackupFlagAsClassAttribute(
-            name=self.tempdir,
-            backup=True
-        )
-        self.assertEqual(dummy_logger.messages, [
-            'WARNING: ``backup`` handling has been removed from '
-            '``Directory`` implementation as of node.ext.fs 0.7'
-        ])
-
     def test_fs_path_keyword_argument(self):
         directory = Directory(name='foo')
         self.assertEqual(directory.fs_path, ['foo'])
@@ -561,25 +567,29 @@ class Tests(NodeTestCase):
         self.assertEqual(directory.fs_path, ['bar'])
 
     def test_node_index(self):
-        directory = Directory(name=os.path.join(self.tempdir, 'root'))
+        directory = ReferencingDirectory(
+            name=os.path.join(self.tempdir, 'root')
+        )
         self.assertEqual(len(directory._index), 1)
 
-        directory['file.txt'] = File()
+        directory['file.txt'] = ReferencingFile()
         self.assertEqual(len(directory._index), 2)
 
-        subdir = directory['subdir'] = Directory()
+        subdir = directory['subdir'] = ReferencingDirectory()
         self.assertEqual(len(directory._index), 3)
 
-        subdir['subfile.txt'] = File()
+        subdir['subfile.txt'] = ReferencingFile()
         self.assertEqual(len(directory._index), 4)
 
         directory()
-        directory = Directory(name=os.path.join(self.tempdir, 'root'))
+        directory = ReferencingDirectory(
+            name=os.path.join(self.tempdir, 'root')
+        )
         self.checkOutput("""\
-        <class 'node.ext.fs.directory.Directory'>: ...root
-          <class 'node.ext.fs.file.File'>: file.txt
-          <class 'node.ext.fs.directory.Directory'>: subdir
-            <class 'node.ext.fs.file.File'>: subfile.txt
+        <class 'node.ext.fs.directory.ReferencingDirectory'>: ...root
+          <class 'node.ext.fs.file.ReferencingFile'>: file.txt
+          <class 'node.ext.fs.directory.ReferencingDirectory'>: subdir
+            <class 'node.ext.fs.file.ReferencingFile'>: subfile.txt
         """, directory.treerepr())
 
         self.assertEqual(len(directory._index), 4)
@@ -589,7 +599,9 @@ class Tests(NodeTestCase):
         self.assertEqual(len(directory._index), 2)
 
         directory()
-        directory = Directory(name=os.path.join(self.tempdir, 'root'))
+        directory = ReferencingDirectory(
+            name=os.path.join(self.tempdir, 'root')
+        )
         self.checkOutput("""\
         <class 'node.ext.fs.directory.Directory'>: ...root
           <class 'node.ext.fs.file.File'>: file.txt
