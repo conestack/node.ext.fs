@@ -18,7 +18,7 @@ class IFSMode(Interface):
     fs_mode = Attribute('Filesystem mode as expected by ``os.chmod``')
 
 
-class IFile(INode, ICallable, IWildcardFactory, IFSLocation):
+class IFile(INode, ICallable, IFSLocation):
     """Marker interface for files."""
 
 
@@ -46,7 +46,7 @@ class IFileNode(IFile, ILeaf):
     )
 
 
-class IDirectory(INode, ICallable, IFSLocation):
+class IDirectory(INode, ICallable, IWildcardFactory, IFSLocation):
     """Directory interface."""
 
     fs_encoding = Attribute('Filesystem encoding. Defaults to UTF-8')
