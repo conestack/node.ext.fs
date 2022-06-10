@@ -22,6 +22,7 @@ from node.ext.fs.interfaces import IFSLocation
 from node.ext.fs.interfaces import IFSMode
 from node.ext.fs.interfaces import IFile
 from node.tests import NodeTestCase
+from node.utils import UNSET
 from plumber import plumbing
 import os
 import shutil
@@ -158,8 +159,13 @@ class Tests(NodeTestCase):
         self.assertEqual(file.data, '')
         self.assertEqual(file.lines, [])
 
+        self.assertFalse(hasattr(file, '_data'))
         file.data = 'abc\ndef'
+        self.assertEqual(file._data, 'abc\ndef')
+
         file()
+        self.assertEqual(file._data, UNSET)
+
         with open(filepath) as f:
             out = f.readlines()
         self.assertEqual(out, ['abc\n', 'def'])
@@ -181,7 +187,7 @@ class Tests(NodeTestCase):
             mode = MODE_BINARY
 
         file = BinaryFile(name=filepath)
-        self.assertEqual(file.data, None)
+        self.assertEqual(file.data, b'')
 
         with self.assertRaises(RuntimeError) as arc:
             file.lines
@@ -197,8 +203,13 @@ class Tests(NodeTestCase):
             'Cannot write lines to binary file.'
         )
 
+        self.assertFalse(hasattr(file, '_data'))
         file.data = b'\x00\x00'
+        self.assertEqual(file._data, b'\x00\x00')
+
         file()
+        self.assertEqual(file._data, UNSET)
+
         with open(filepath) as f:
             out = f.read()
         self.assertEqual(out, '\x00\x00')

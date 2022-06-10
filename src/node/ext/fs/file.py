@@ -1,5 +1,7 @@
+from contextlib import contextmanager
 from node.behaviors import DefaultInit
 from node.behaviors import Node
+from node.ext.fs.interfaces import IFileIO
 from node.ext.fs.interfaces import IFileNode
 from node.ext.fs.interfaces import MODE_BINARY
 from node.ext.fs.interfaces import MODE_TEXT
@@ -7,6 +9,7 @@ from node.ext.fs.location import FSLocation
 from node.ext.fs.location import join_fs_path
 from node.ext.fs.mode import FSMode
 from node.locking import locktree
+from node.utils import UNSET
 from plumber import default
 from plumber import finalize
 from plumber import plumbing
@@ -14,48 +17,63 @@ from zope.interface import implementer
 import os
 
 
+@contextmanager
+def open_file(path, mode):
+    fd = open(path, mode)
+    try:
+        yield fd
+    finally:
+        fd.close()
+
+
+@implementer(IFileIO)
+class FileIO(FSLocation):
+    mode = default(MODE_TEXT)
+
+    @default
+    @property
+    def read_fd(self):
+        return open_file(
+            join_fs_path(self),
+            'rb' if self.mode == MODE_BINARY else 'r'
+        )
+
+    @default
+    @property
+    def write_fd(self):
+        return open_file(
+            join_fs_path(self),
+            'wb' if self.mode == MODE_BINARY else 'w'
+        )
+
+
 @implementer(IFileNode)
-class FileNode(Node, FSLocation):
+class FileNode(Node, FileIO):
     direct_sync = default(False)
 
     @property
-    def mode(self):
-        if not hasattr(self, '_mode'):
-            self.mode = MODE_TEXT
-        return self._mode
-
-    @default
-    @mode.setter
-    def mode(self, mode):
-        self._mode = mode
-
-    @property
     def data(self):
-        if not hasattr(self, '_data'):
-            if self.mode == MODE_BINARY:
-                self._data = None
-            else:
-                self._data = ''
-            file_path = join_fs_path(self)
-            if os.path.exists(file_path):
-                mode = self.mode == MODE_BINARY and 'rb' or 'r'
-                with open(file_path, mode) as file:
-                    self._data = file.read()
-        return self._data
+        data = getattr(self, '_data', UNSET)
+        if data is UNSET:
+            data = b'' if self.mode == MODE_BINARY else ''
+            if os.path.exists(join_fs_path(self)):
+                with self.read_fd as f:
+                    data = f.read()
+        return data
 
     @default
     @data.setter
     def data(self, data):
-        setattr(self, '_changed', True)
         self._data = data
 
     @property
     def lines(self):
         if self.mode == MODE_BINARY:
             raise RuntimeError('Cannot read lines from binary file.')
-        if not self.data:
+        data = self.data
+        if not data:
             return []
-        return self.data.split('\n')
+        return data.split('\n')
 
     @default
     @lines.setter
@@ -67,17 +85,15 @@ class FileNode(Node, FSLocation):
     @finalize
     @locktree
     def __call__(self):
-        file_path = join_fs_path(self)
-        exists = os.path.exists(file_path)
         # Only write file if it's data has changed or not exists yet
-        if getattr(self, '_changed', False) or not exists:
-            write_mode = self.mode == MODE_BINARY and 'wb' or 'w'
-            with open(file_path, write_mode) as file:
-                file.write(self.data)
+        exists = os.path.exists(join_fs_path(self))
+        if getattr(self, '_data', UNSET) is not UNSET or not exists:
+            with self.write_fd as f:
+                f.write(self.data)
                 if self.direct_sync:
-                    file.flush()
-                    os.fsync(file.fileno())
-            self._changed = False
+                    f.flush()
+                    os.fsync(f.fileno())
+            self._data = UNSET
 
 
 @plumbing(

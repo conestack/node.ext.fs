@@ -4,10 +4,10 @@ Changes
 1.0 (unreleased)
 ----------------
 
-- Introduce ``IFileNode`` interface.
+- Introduce ``IFileIO`` interface and ``FileIO`` plumbing behavior.
   [rnix]
 
-- Set ``_changed`` to ``False`` after saving the file to disk in ``FileNode``.
+- Introduce ``IFileNode`` interface.
   [rnix]
 
 - Pass ``name`` and ``parent`` to default file and directory factories.
@@ -63,7 +63,8 @@ Changes
   [rnix]
 
 - Rename ``FileStorage`` to ``FileNode``. It no longer inherits from
-  ``DictStorage``.
+  ``DictStorage``. Further file data is no longer kept in memory unless it
+  changes, then it's kept until it gets written to disk.
   [rnix]
 
 - ``FileNode`` and ``DirectoryStorage`` not inherits from

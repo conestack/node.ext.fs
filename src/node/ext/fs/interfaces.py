@@ -26,16 +26,28 @@ MODE_TEXT = 0
 MODE_BINARY = 1
 
 
-class IFileNode(IFile, ILeaf):
-    """File interface."""
+class IFileIO(IFSLocation):
+    """File IO interface."""
+
+    mode = Attribute(
+        'Mode of this file. Either ``MODE_TEXT`` or ``MODE_BINARY``'
+    )
+
+    read_fd = Attribute(
+        'Context manager providing the file descriptor in read mode'
+    )
+
+    write_fd = Attribute(
+        'Context manager providing the file descriptor in write mode'
+    )
+
+
+class IFileNode(IFile, IFileIO, ILeaf):
+    """Basic file node interface."""
 
     direct_sync = Attribute(
         'Flag whether to directly sync filesystem with ``os.fsync`` on '
         '``__call__``'
-    )
-
-    mode = Attribute(
-        'Mode of this file. Either ``MODE_TEXT`` or ``MODE_BINARY``'
     )
 
     data = Attribute('Data of the file')
