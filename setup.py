@@ -48,5 +48,9 @@ setup(
         'node>=1.0',
         'setuptools'
     ],
+    extras_require=dict(
+        test=['coverage']
+    ),
+    tests_require=['coverage'],
     test_suite='node.ext.fs.tests'
 )
