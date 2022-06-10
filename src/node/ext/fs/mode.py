@@ -1,5 +1,5 @@
 from node.ext.fs.interfaces import IFSMode
-from node.ext.fs.location import get_fs_path
+from node.ext.fs.location import join_fs_path
 from plumber import Behavior
 from plumber import default
 from plumber import plumb
@@ -8,7 +8,7 @@ import os
 
 
 def get_fs_mode(node):
-    fs_path = os.path.join(*get_fs_path(node))
+    fs_path = join_fs_path(node)
     if not os.path.exists(fs_path):
         return None
     return os.stat(fs_path).st_mode & 0o777
@@ -37,4 +37,4 @@ class FSMode(Behavior):
         next_(self)
         fs_mode = self.fs_mode
         if fs_mode is not None:
-            os.chmod(os.path.join(*get_fs_path(self)), fs_mode)
+            os.chmod(join_fs_path(self), fs_mode)

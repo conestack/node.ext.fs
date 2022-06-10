@@ -7,7 +7,7 @@ from node.ext.fs.file import File
 from node.ext.fs.interfaces import IDirectory
 from node.ext.fs.interfaces import IFile
 from node.ext.fs.location import FSLocation
-from node.ext.fs.location import get_fs_path
+from node.ext.fs.location import join_fs_path
 from node.ext.fs.mode import FSMode
 from node.locking import locktree
 from plumber import default
@@ -64,7 +64,7 @@ class DirectoryStorage(DictStorage, WildcardFactory, FSLocation):
         try:
             return self.storage[name]
         except KeyError:
-            filepath = os.path.join(*get_fs_path(self, [name]))
+            filepath = join_fs_path(self, [name])
             if not os.path.exists(filepath):
                 raise KeyError(name)
             factory = self.factory_for_pattern(name)
@@ -95,14 +95,14 @@ class DirectoryStorage(DictStorage, WildcardFactory, FSLocation):
     @finalize
     def __delitem__(self, name):
         name = _encode_name(self.fs_encoding, name)
-        if os.path.exists(os.path.join(*get_fs_path(self, [name]))):
+        if os.path.exists(join_fs_path(self, [name])):
             self._deleted_fs_children.append(name)
         del self.storage[name]
 
     @finalize
     def __iter__(self):
         try:
-            existing = set(os.listdir(os.path.join(*get_fs_path(self))))
+            existing = set(os.listdir(join_fs_path(self)))
         except OSError:
             existing = set()
         existing.update(self.storage)
@@ -115,7 +115,7 @@ class DirectoryStorage(DictStorage, WildcardFactory, FSLocation):
     @locktree
     def __call__(self):
         if IDirectory.providedBy(self):
-            path = os.path.join(*get_fs_path(self))
+            path = join_fs_path(self)
             if not os.path.exists(path):
                 os.mkdir(path)
             elif not os.path.isdir(path):
@@ -124,10 +124,7 @@ class DirectoryStorage(DictStorage, WildcardFactory, FSLocation):
                     '"{}" which already exists as file.'
                 ).format(self.name))
         while self._deleted_fs_children:
-            path = os.path.join(*get_fs_path(
-                self,
-                [self._deleted_fs_children.pop()]
-            ))
+            path = join_fs_path(self, [self._deleted_fs_children.pop()])
             if os.path.exists(path):
                 if os.path.isdir(path):
                     shutil.rmtree(path)

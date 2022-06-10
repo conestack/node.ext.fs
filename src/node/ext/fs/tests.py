@@ -16,6 +16,7 @@ from node.ext.fs import MODE_BINARY
 from node.ext.fs import MODE_TEXT
 from node.ext.fs import get_fs_mode
 from node.ext.fs import get_fs_path
+from node.ext.fs import join_fs_path
 from node.ext.fs.interfaces import IDirectory
 from node.ext.fs.interfaces import IFSLocation
 from node.ext.fs.interfaces import IFSMode
@@ -96,6 +97,11 @@ class Tests(NodeTestCase):
         ob = DummyNode()
         self.assertEqual(get_fs_path(ob), ['root'])
         self.assertEqual(get_fs_path(ob, ['child']), ['root', 'child'])
+
+    def test_join_fs_path(self):
+        ob = FSLocationObject(path=['path'])
+        self.assertEqual(join_fs_path(ob), 'path')
+        self.assertEqual(join_fs_path(ob, ['child']), 'path/child')
 
     def test_FSLocation(self):
         ob = FSLocationObject(name='name', path=['path'])

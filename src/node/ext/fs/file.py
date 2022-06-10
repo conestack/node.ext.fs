@@ -4,7 +4,7 @@ from node.ext.fs.interfaces import IFileNode
 from node.ext.fs.interfaces import MODE_BINARY
 from node.ext.fs.interfaces import MODE_TEXT
 from node.ext.fs.location import FSLocation
-from node.ext.fs.location import get_fs_path
+from node.ext.fs.location import join_fs_path
 from node.ext.fs.mode import FSMode
 from node.locking import locktree
 from plumber import default
@@ -36,7 +36,7 @@ class FileNode(Node, FSLocation):
                 self._data = None
             else:
                 self._data = ''
-            file_path = os.path.join(*get_fs_path(self))
+            file_path = join_fs_path(self)
             if os.path.exists(file_path):
                 mode = self.mode == MODE_BINARY and 'rb' or 'r'
                 with open(file_path, mode) as file:
@@ -67,7 +67,7 @@ class FileNode(Node, FSLocation):
     @finalize
     @locktree
     def __call__(self):
-        file_path = os.path.join(*get_fs_path(self))
+        file_path = join_fs_path(self)
         exists = os.path.exists(file_path)
         # Only write file if it's data has changed or not exists yet
         if getattr(self, '_changed', False) or not exists:

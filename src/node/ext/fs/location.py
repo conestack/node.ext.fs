@@ -2,6 +2,7 @@ from node.ext.fs.interfaces import IFSLocation
 from plumber import Behavior
 from plumber import default
 from zope.interface import implementer
+import os
 
 
 def get_fs_path(ob, child_path=[]):
@@ -9,6 +10,10 @@ def get_fs_path(ob, child_path=[]):
     if hasattr(ob, 'fs_path'):
         return ob.fs_path + child_path
     return ob.path + child_path
+
+
+def join_fs_path(ob, child_path=[]):
+    return os.path.join(*get_fs_path(ob, child_path))
 
 
 @implementer(IFSLocation)

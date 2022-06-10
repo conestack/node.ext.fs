@@ -6,5 +6,6 @@ from node.ext.fs.interfaces import MODE_BINARY
 from node.ext.fs.interfaces import MODE_TEXT
 from node.ext.fs.location import FSLocation
 from node.ext.fs.location import get_fs_path
+from node.ext.fs.location import join_fs_path
 from node.ext.fs.mode import FSMode
 from node.ext.fs.mode import get_fs_mode
