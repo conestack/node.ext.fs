@@ -456,25 +456,57 @@ class Tests(NodeTestCase):
         self.assertEqual(directory['subdir1'].fs_mode, 0o770)
         self.assertEqual(directory['subdir2'].fs_mode, 0o755)
 
-    def test_add_invalid_child(self):
-        # Add invalid child node
-        @plumbing(
-            MappingAdopt,
-            DefaultInit,
-            MappingReference,
-            MappingNode,
-            DictStorage)
-        class NoFile(object):
-            pass
+    def test_directory_child_validation(self):
+        class TestFile(File):
+            """"""
 
-        directory = Directory(name=os.path.join(self.tempdir, 'root'))
+        class TestFactoryFile(File):
+            """"""
+
+        def test_file_factory(name, parent):
+            return TestFactoryFile(name=name, parent=parent)
+
+        class TestDirectory(Directory):
+            factories = {
+                'file': TestFile,
+                'factoryfile': test_file_factory
+            }
+
+        directory = TestDirectory(fs_path=[self.tempdir, 'root'])
 
         with self.assertRaises(ValueError) as arc:
-            directory['unknown'] = NoFile()
+            directory['unknown'] = object()
         self.assertEqual(str(arc.exception), (
             'Incompatible child node. ``IDirectory`` '
             'or ``IFile`` must be implemented.'
         ))
+
+        with self.assertRaises(ValueError) as arc:
+            directory['file'] = File()
+        self.checkOutput("""
+        Given child node has wrong type. Expected
+        ``<class '...TestFile'>``, got ``<class 'node.ext.fs.file.File'>``
+        """, str(arc.exception))
+
+        with self.assertRaises(ValueError) as arc:
+            directory['factoryfile'] = File()
+        self.checkOutput("""
+        Given child node has wrong type. Expected
+        ``<class '...TestFactoryFile'>``, got ``<class 'node.ext.fs.file.File'>``
+        """, str(arc.exception))
+
+        directory['any'] = File()
+        directory['file'] = TestFile()
+        directory['factoryfile'] = TestFactoryFile()
+        directory()
+
+        directory = TestDirectory(fs_path=[self.tempdir, 'root'])
+        self.checkOutput("""
+        <class '...TestDirectory'>: ...
+        __<class 'node.ext.fs.file.File'>: any
+        __<class '...TestFactoryFile'>: factoryfile
+        __<class '...TestFile'>: file
+        """, directory.treerepr(prefix='_'))
 
     def test_ignore_children(self):
         # Ignore children in directories

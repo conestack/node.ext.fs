@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 from node.behaviors import DictStorage
 from node.behaviors import MappingAdopt
 from node.behaviors import MappingNode
@@ -14,8 +15,10 @@ from plumber import default
 from plumber import finalize
 from plumber import plumbing
 from zope.interface import implementer
+import inspect
 import os
 import shutil
+import threading
 
 
 def _encode_name(fs_encoding, name):
@@ -25,6 +28,20 @@ def _encode_name(fs_encoding, name):
         else name
     )
     return name
+
+
+_directory_context = threading.local()
+_directory_context.validate_child = True
+
+
+@contextmanager
+def _skip_validate_child():
+    """Context manager to skip validation when setting directory child."""
+    _directory_context.validate_child = False
+    try:
+        yield
+    finally:
+        _directory_context.validate_child = True
 
 
 @implementer(IDirectory)
@@ -74,20 +91,32 @@ class DirectoryStorage(DictStorage, WildcardFactory, FSLocation):
                     if os.path.isdir(filepath)
                     else self.default_file_factory
                 )
-            # XXX: Check IDirectory/IFile here?
-            self[name] = factory(name=name, parent=self)
+            with _skip_validate_child():
+                self[name] = factory(name=name, parent=self)
         return self.storage[name]
 
     @finalize
     def __setitem__(self, name, value):
-        if not name:
-            raise KeyError('Empty key not allowed in directories')
-        if not IDirectory.providedBy(value) and not IFile.providedBy(value):
-            raise ValueError(
-                'Incompatible child node. ``IDirectory`` or '
-                '``IFile`` must be implemented.'
-            )
         name = _encode_name(self.fs_encoding, name)
+        if _directory_context.validate_child:
+            if not name:
+                raise KeyError('Empty key not allowed in directories')
+            if not IDirectory.providedBy(value) and not IFile.providedBy(value):
+                raise ValueError(
+                    'Incompatible child node. ``IDirectory`` or ``IFile`` '
+                    'must be implemented.'
+                )
+            factory = self.factory_for_pattern(name)
+            if factory:
+                if not inspect.isclass(factory):
+                    class_ = factory(name=name, parent=self).__class__
+                else:
+                    class_ = factory
+                if not isinstance(value, class_):
+                    raise ValueError((
+                        'Given child node has wrong type. Expected ``{}``, '
+                        'got ``{}``'
+                    ).format(class_, type(value)))
         if name in self._deleted_fs_children:
             self._deleted_fs_children.remove(name)
         self.storage[name] = value
