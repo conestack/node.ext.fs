@@ -4,6 +4,11 @@ Changes
 1.0 (unreleased)
 ----------------
 
+- Subclass ``threading.local`` for
+  ``node.ext.fs.directory._directory_context`` objects in order to safely
+  provide default values.
+  [rnix]
+
 - Introduce ``IFileIO`` interface and ``FileIO`` plumbing behavior.
   [rnix]
 

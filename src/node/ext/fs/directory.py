@@ -30,8 +30,11 @@ def _encode_name(fs_encoding, name):
     return name
 
 
-_directory_context = threading.local()
-_directory_context.validate_child = True
+class DirectoryContext(threading.local):
+    validate_child = True
+
+
+_directory_context = DirectoryContext()
 
 
 @contextmanager
