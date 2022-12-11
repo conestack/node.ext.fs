@@ -4,7 +4,13 @@ Changes
 1.1 (unreleased)
 ----------------
 
-- Nothing changed yet.
+- Introduce ``node.ext.fs.interfaces.IDirectory.rename`` and implement in
+  ``node.ext.fs.directory.DirectoryStorage``.
+  [rnix]
+
+- Do not allow setting and deleting of directory children defined in
+  ``ignores``.
+  [rnix]
 
 
 1.0 (2022-10-06)

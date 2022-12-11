@@ -8,6 +8,7 @@ from node.ext.fs.file import File
 from node.ext.fs.interfaces import IDirectory
 from node.ext.fs.interfaces import IFile
 from node.ext.fs.location import FSLocation
+from node.ext.fs.location import get_fs_name
 from node.ext.fs.location import join_fs_path
 from node.ext.fs.mode import FSMode
 from node.locking import locktree
@@ -75,6 +76,7 @@ class DirectoryStorage(DictStorage, WildcardFactory, FSLocation):
         if ignores is not None:
             self.ignores = ignores
         self._deleted_fs_children = list()
+        self._renamed_fs_children = dict()
 
     @finalize
     def __getitem__(self, name):
@@ -101,6 +103,8 @@ class DirectoryStorage(DictStorage, WildcardFactory, FSLocation):
     @finalize
     def __setitem__(self, name, value):
         name = _encode_name(self.fs_encoding, name)
+        if name in self.ignores:
+            raise KeyError('Name is contained in ignores')
         if _directory_context.validate_child:
             if not name:
                 raise KeyError('Empty key not allowed in directories')
@@ -127,9 +131,15 @@ class DirectoryStorage(DictStorage, WildcardFactory, FSLocation):
     @finalize
     def __delitem__(self, name):
         name = _encode_name(self.fs_encoding, name)
-        if os.path.exists(join_fs_path(self, [name])):
-            self._deleted_fs_children.append(name)
-        del self.storage[name]
+        if name in self.ignores:
+            raise KeyError('Name is contained in ignores')
+        fs_name = get_fs_name(self, name)
+        if name in self._renamed_fs_children.values():
+            del self._renamed_fs_children[fs_name]
+        if os.path.exists(join_fs_path(self, [fs_name])):
+            self._deleted_fs_children.append(fs_name)
+        if name in self.storage:
+            del self.storage[name]
 
     @finalize
     def __iter__(self):
@@ -141,6 +151,8 @@ class DirectoryStorage(DictStorage, WildcardFactory, FSLocation):
         return iter(existing
             .difference(self._deleted_fs_children)
             .difference(self.ignores)
+            .difference(self._renamed_fs_children)
+            .union(self._renamed_fs_children.values())
         )
 
     @finalize
@@ -162,9 +174,36 @@ class DirectoryStorage(DictStorage, WildcardFactory, FSLocation):
                     shutil.rmtree(path)
                 else:
                     os.remove(path)
+        for name, new_name in self._renamed_fs_children.items():
+            src = os.path.join(*self.fs_path + [name])
+            if os.path.exists(src):
+                dst = os.path.join(os.path.dirname(src), new_name)
+                os.rename(src, dst)
+        self._renamed_fs_children = dict()
         for value in self.values():
             if IDirectory.providedBy(value) or IFile.providedBy(value):
                 value()
+
+    @default
+    def rename(self, name, new_name):
+        name = _encode_name(self.fs_encoding, name)
+        new_name = _encode_name(self.fs_encoding, new_name)
+        if name not in self:
+            raise KeyError(name)
+        if not new_name:
+            raise KeyError('No new name given')
+        if new_name in self:
+            raise KeyError('File or directory with new name already exists')
+        if new_name in self.ignores:
+            raise KeyError('New name is contained in ignores')
+        if name in self.storage:
+            child = self[name]
+            child.__name__ = new_name
+            with _skip_validate_child():
+                self[new_name] = child
+            del self.storage[name]
+        fs_name = get_fs_name(self, name)
+        self._renamed_fs_children[fs_name] = new_name
 
 
 @plumbing(

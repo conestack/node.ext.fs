@@ -71,4 +71,11 @@ class IDirectory(INode, ICallable, IWildcardFactory, IFSLocation):
         'Default factory for creating file children'
     )
 
-    ignores = Attribute('child keys to ignore')
+    ignores = Attribute('Child keys to ignore')
+
+    def rename(name, new_name):
+        """Rename child
+
+        :param name: Name of the child to rename
+        :param new_name: New name of the child
+        """

@@ -540,12 +540,168 @@ class Tests(NodeTestCase):
         directory = Directory(name=self.tempdir, ignores=['file2.txt'])
         self.assertEqual(list(directory.keys()), ['file1.txt'])
 
+        with self.assertRaises(KeyError) as arc:
+            directory['file2.txt'] = File()
+        self.assertEqual(str(arc.exception), "'Name is contained in ignores'")
+
+        with self.assertRaises(KeyError) as arc:
+            del directory['file2.txt']
+        self.assertEqual(str(arc.exception), "'Name is contained in ignores'")
+
+        with self.assertRaises(KeyError) as arc:
+            directory.rename('file1.txt', 'file2.txt')
+        self.assertEqual(str(arc.exception), "'New name is contained in ignores'")
+
     def test_fs_path_keyword_argument(self):
         directory = Directory(name='foo')
         self.assertEqual(directory.fs_path, ['foo'])
 
         directory = Directory(name='foo', fs_path=['bar'])
         self.assertEqual(directory.fs_path, ['bar'])
+
+    def test_rename_children(self):
+        with open(os.path.join(self.tempdir, 'file1.txt'), 'w') as f:
+            f.write('')
+        with open(os.path.join(self.tempdir, 'file2.txt'), 'w') as f:
+            f.write('')
+        os.makedirs(os.path.join(self.tempdir, 'dir1'))
+        os.makedirs(os.path.join(self.tempdir, 'dir2'))
+
+        # invalid rename calls
+        directory = Directory(name=self.tempdir)
+        with self.assertRaises(KeyError) as arc:
+            directory.rename('inextistent', '')
+        self.assertEqual(str(arc.exception), "'inextistent'")
+
+        with self.assertRaises(KeyError) as arc:
+            directory.rename('file1.txt', '')
+        self.assertEqual(str(arc.exception), "'No new name given'")
+
+        with self.assertRaises(KeyError) as arc:
+            directory.rename('file1.txt', 'file2.txt')
+        self.assertEqual(
+            str(arc.exception),
+            "'File or directory with new name already exists'"
+        )
+
+        # case children not loaded in storage yet
+        directory = Directory(name=self.tempdir)
+        self.assertEqual(directory.storage, {})
+        directory.rename('file1.txt', 'file3.txt')
+        directory.rename('dir1', 'dir3')
+        self.assertEqual(
+            directory._renamed_fs_children,
+            {'dir1': 'dir3', 'file1.txt': 'file3.txt'}
+        )
+        self.assertEqual(
+            sorted(directory),
+            ['dir2', 'dir3', 'file2.txt', 'file3.txt']
+        )
+        self.assertEqual(
+            sorted(os.listdir(self.tempdir)),
+            ['dir1', 'dir2', 'file1.txt', 'file2.txt']
+        )
+        directory()
+        self.assertEqual(
+            sorted(os.listdir(self.tempdir)),
+            ['dir2', 'dir3', 'file2.txt', 'file3.txt']
+        )
+        self.assertEqual(directory._renamed_fs_children, {})
+
+        # case children loaded in storage
+        directory = Directory(name=self.tempdir)
+        directory.values()
+        self.assertEqual(
+            sorted(directory.storage),
+            ['dir2', 'dir3', 'file2.txt', 'file3.txt']
+        )
+        directory.rename('dir3', 'dir1')
+        self.assertEqual(
+            sorted(directory.storage),
+            ['dir1', 'dir2', 'file2.txt', 'file3.txt']
+        )
+        self.assertEqual(directory['dir1'].name, 'dir1')
+        self.assertEqual(
+            sorted(os.listdir(self.tempdir)),
+            ['dir2', 'dir3', 'file2.txt', 'file3.txt']
+        )
+        directory()
+        self.assertEqual(
+            sorted(os.listdir(self.tempdir)),
+            ['dir1', 'dir2', 'file2.txt', 'file3.txt']
+        )
+
+        # case rename a child to a name which was deleted
+        with open(os.path.join(self.tempdir, 'dir1', 'marker'), 'w') as f:
+            f.write('')
+        directory = Directory(name=self.tempdir)
+        del directory['dir2']
+        self.assertEqual(
+            sorted(directory),
+            ['dir1', 'file2.txt', 'file3.txt']
+        )
+        self.assertEqual(directory._deleted_fs_children, ['dir2'])
+        directory.rename('dir1', 'dir2')
+        self.assertEqual(directory._renamed_fs_children, {'dir1': 'dir2'})
+        self.assertEqual(
+            sorted(directory),
+            ['dir2', 'file2.txt', 'file3.txt']
+        )
+        self.assertEqual(
+            sorted(os.listdir(self.tempdir)),
+            ['dir1', 'dir2', 'file2.txt', 'file3.txt']
+        )
+        directory()
+        self.assertEqual(
+            sorted(os.listdir(self.tempdir)),
+            ['dir2', 'file2.txt', 'file3.txt']
+        )
+        self.assertTrue(
+            os.path.exists(os.path.join(self.tempdir, 'dir2', 'marker'))
+        )
+
+        # Check fs path handling on renamed objects
+        directory = Directory(name=self.tempdir)
+        directory.rename('dir2', 'dir1')
+        child_dir = directory['dir1']
+        self.assertEqual(child_dir.path[1:], ['dir1'])
+        self.assertEqual(child_dir.fs_path[1:], ['dir2'])
+        self.assertEqual(sorted(child_dir), ['marker'])
+        marker = child_dir['marker']
+        self.assertEqual(marker.path[1:], ['dir1', 'marker'])
+        self.assertEqual(marker.fs_path[1:], ['dir2', 'marker'])
+
+        directory()
+        self.assertEqual(child_dir.path[1:], ['dir1'])
+        self.assertEqual(child_dir.fs_path[1:], ['dir1'])
+        self.assertEqual(sorted(child_dir), ['marker'])
+        self.assertEqual(marker.path[1:], ['dir1', 'marker'])
+        self.assertEqual(marker.fs_path[1:], ['dir1', 'marker'])
+
+        # Check renaming already renamed object
+        directory = Directory(name=self.tempdir)
+        directory.rename('dir1', 'dir2')
+        directory.rename('dir2', 'dir3')
+        self.assertEqual(directory._renamed_fs_children, {'dir1': 'dir3'})
+        directory()
+        self.assertEqual(
+            sorted(os.listdir(self.tempdir)),
+            ['dir3', 'file2.txt', 'file3.txt']
+        )
+
+        # Case delete renamed object
+        directory = Directory(name=self.tempdir)
+        directory.rename('dir3', 'dir1')
+        self.assertEqual(directory._renamed_fs_children, {'dir3': 'dir1'})
+        self.assertEqual(directory._deleted_fs_children, [])
+        del directory['dir1']
+        self.assertEqual(directory._renamed_fs_children, {})
+        self.assertEqual(directory._deleted_fs_children, ['dir3'])
+        directory()
+        self.assertEqual(
+            sorted(os.listdir(self.tempdir)),
+            ['file2.txt', 'file3.txt']
+        )
 
     def test_node_index(self):
         directory = ReferencingDirectory(
