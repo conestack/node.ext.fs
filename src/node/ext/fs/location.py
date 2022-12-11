@@ -5,6 +5,15 @@ from zope.interface import implementer
 import os
 
 
+def get_fs_name(directory, name):
+    renamed = getattr(directory, '_renamed_fs_children', {})
+    for old_name, new_name in renamed.items():
+        if name == new_name:
+            name = old_name
+            break
+    return name
+
+
 def get_fs_path(ob, child_path=[]):
     # Use fs_path if provided by ob, otherwise fallback to path
     if hasattr(ob, 'fs_path'):
@@ -25,7 +34,7 @@ class FSLocation(Behavior):
             return self._fs_path
         parent = self.parent
         if parent is not None and hasattr(parent, 'fs_path'):
-            return self.parent.fs_path + [self.name]
+            return self.parent.fs_path + [get_fs_name(self.parent, self.name)]
         return self.path
 
     @default
