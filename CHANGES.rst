@@ -1,7 +1,7 @@
 Changes
 =======
 
-1.1 (unreleased)
+1.1 (2022-12-21)
 ----------------
 
 - Introduce ``node.ext.fs.interfaces.IDirectory.rename`` and implement in
