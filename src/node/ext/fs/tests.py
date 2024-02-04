@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 from node.behaviors import DefaultInit
-from node.behaviors import DictStorage
 from node.behaviors import MappingAdopt
 from node.behaviors import MappingNode
 from node.behaviors import MappingReference
@@ -8,19 +7,19 @@ from node.behaviors import NodeReference
 from node.compat import IS_PY2
 from node.ext.fs import Directory
 from node.ext.fs import DirectoryStorage
-from node.ext.fs import FSLocation
-from node.ext.fs import FSMode
 from node.ext.fs import File
 from node.ext.fs import FileNode
-from node.ext.fs import MODE_BINARY
-from node.ext.fs import MODE_TEXT
+from node.ext.fs import FSLocation
+from node.ext.fs import FSMode
 from node.ext.fs import get_fs_mode
 from node.ext.fs import get_fs_path
 from node.ext.fs import join_fs_path
+from node.ext.fs import MODE_BINARY
+from node.ext.fs import MODE_TEXT
 from node.ext.fs.interfaces import IDirectory
+from node.ext.fs.interfaces import IFile
 from node.ext.fs.interfaces import IFSLocation
 from node.ext.fs.interfaces import IFSMode
-from node.ext.fs.interfaces import IFile
 from node.tests import NodeTestCase
 from node.utils import UNSET
 from plumber import plumbing
@@ -113,6 +112,7 @@ class Tests(NodeTestCase):
         ob.fs_path = ['path', 'to', 'ob']
         self.assertEqual(ob.fs_path, ['path', 'to', 'ob'])
 
+    @unittest.skipIf(os.name == 'nt', 'This test is written for *nix platforms')
     def test_get_fs_mode(self):
         path = os.path.join(self.tempdir, 'file')
         with open(path, 'w') as f:
@@ -125,6 +125,7 @@ class Tests(NodeTestCase):
         ob = FSModeObject(path=[self.tempdir, 'inexistent'])
         self.assertEqual(get_fs_mode(ob), None)
 
+    @unittest.skipIf(os.name == 'nt', 'This test is written for *nix platforms')
     def test_FSMode(self):
         path = os.path.join(self.tempdir, 'file')
         with open(path, 'w') as f:
@@ -214,6 +215,7 @@ class Tests(NodeTestCase):
             out = f.read()
         self.assertEqual(out, '\x00\x00')
 
+    @unittest.skipIf(os.name == 'nt', 'This test is written for *nix platforms')
     def test_file_permissions(self):
         filepath = os.path.join(self.tempdir, 'file.txt')
         file = File(name=filepath)
@@ -331,6 +333,7 @@ class Tests(NodeTestCase):
         self.assertTrue(os.path.exists(dirpath))
         self.assertTrue(os.path.isdir(dirpath))
 
+    @unittest.skipIf(os.name == 'nt', 'This test is written for *nix platforms')
     def test_directory_permissions(self):
         dirpath = os.path.join(self.tempdir, 'root')
         directory = Directory(name=dirpath)
@@ -441,6 +444,7 @@ class Tests(NodeTestCase):
             directory['inexistent']
         self.assertEqual(str(arc.exception), '\'inexistent\'')
 
+    @unittest.skipIf(os.name == 'nt', 'This test is written for *nix platforms')
     def test_sub_directory_permissions(self):
         directory = Directory(name=os.path.join(self.tempdir, 'root'))
         directory.fs_mode = 0o777
