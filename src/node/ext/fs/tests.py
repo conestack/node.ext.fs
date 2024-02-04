@@ -101,7 +101,10 @@ class Tests(NodeTestCase):
     def test_join_fs_path(self):
         ob = FSLocationObject(path=['path'])
         self.assertEqual(join_fs_path(ob), 'path')
-        self.assertEqual(join_fs_path(ob, ['child']), 'path/child')
+        self.assertEqual(
+            join_fs_path(ob, ['child']),
+            os.path.sep.join(['path', 'child'])
+        )
 
     def test_FSLocation(self):
         ob = FSLocationObject(name='name', path=['path'])
@@ -365,7 +368,7 @@ class Tests(NodeTestCase):
         directory['subdir2'] = Directory()
 
         self.checkOutput("""\
-        <class 'node.ext.fs.directory.Directory'>: /.../root
+        <class 'node.ext.fs.directory.Directory'>: ...root
           <class 'node.ext.fs.directory.Directory'>: subdir1
           <class 'node.ext.fs.directory.Directory'>: subdir2
         """, directory.treerepr())
@@ -382,7 +385,7 @@ class Tests(NodeTestCase):
 
         directory = Directory(name=os.path.join(self.tempdir, 'root'))
         self.checkOutput("""\
-        <class 'node.ext.fs.directory.Directory'>: /.../root
+        <class 'node.ext.fs.directory.Directory'>: ...root
           <class 'node.ext.fs.directory.Directory'>: subdir1
           <class 'node.ext.fs.directory.Directory'>: subdir2
         """, directory.treerepr())
