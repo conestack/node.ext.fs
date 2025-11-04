@@ -26,7 +26,6 @@ from plumber import plumbing
 import os
 import shutil
 import tempfile
-import unittest
 
 
 ###############################################################################
@@ -283,9 +282,9 @@ class Tests(NodeTestCase):
         self.checkOutput("""
         <class 'node.ext.fs.directory.Directory'>: ...
         __<class 'node.ext.fs.file.File'>: foo
-        __<class 'node.ext.fs.tests...AudioFile'>: foo.mp3
-        __<class 'node.ext.fs.tests...TextFile'>: foo.txt
-        __<class 'node.ext.fs.tests...LogsDirectory'>: logs
+        __<class 'node.ext.fs.tests.test_fs...AudioFile'>: foo.mp3
+        __<class 'node.ext.fs.tests.test_fs...TextFile'>: foo.txt
+        __<class 'node.ext.fs.tests.test_fs...LogsDirectory'>: logs
         __<class 'node.ext.fs.directory.Directory'>: other
         """, dir.treerepr(prefix='_'))
 
@@ -725,10 +724,10 @@ class Tests(NodeTestCase):
             name=os.path.join(self.tempdir, 'root')
         )
         self.checkOutput("""\
-        <class 'node.ext.fs.tests.ReferencingDirectory'>: ...root
-          <class 'node.ext.fs.tests.ReferencingFile'>: file.txt
-          <class 'node.ext.fs.tests.ReferencingDirectory'>: subdir
-            <class 'node.ext.fs.tests.ReferencingFile'>: subfile.txt
+        <class 'node.ext.fs.tests.test_fs.ReferencingDirectory'>: ...root
+          <class 'node.ext.fs.tests.test_fs.ReferencingFile'>: file.txt
+          <class 'node.ext.fs.tests.test_fs.ReferencingDirectory'>: subdir
+            <class 'node.ext.fs.tests.test_fs.ReferencingFile'>: subfile.txt
         """, directory.treerepr())
 
         self.assertEqual(len(directory._index), 4)
@@ -742,8 +741,8 @@ class Tests(NodeTestCase):
             name=os.path.join(self.tempdir, 'root')
         )
         self.checkOutput("""\
-        <class 'node.ext.fs.tests.ReferencingDirectory'>: ...root
-          <class 'node.ext.fs.tests.ReferencingFile'>: file.txt
+        <class 'node.ext.fs.tests.test_fs.ReferencingDirectory'>: ...root
+          <class 'node.ext.fs.tests.test_fs.ReferencingFile'>: file.txt
         """, directory.treerepr())
 
         self.assertEqual(len(directory._index), 2)
@@ -754,14 +753,3 @@ class Tests(NodeTestCase):
 
         file = File()
         self.assertTrue(IFile.providedBy(file))
-
-
-if __name__ == '__main__':
-    from node.ext.fs import tests
-    import sys
-
-    suite = unittest.TestSuite()
-    suite.addTest(unittest.findTestCases(tests))
-    runner = unittest.TextTestRunner(failfast=True)
-    result = runner.run(suite)
-    sys.exit(not result.wasSuccessful())
