@@ -27,7 +27,6 @@ def join_fs_path(ob, child_path=[]):
 
 @implementer(IFSLocation)
 class FSLocation(Behavior):
-
     @property
     def fs_path(self):
         if getattr(self, '_fs_path', None) is not None:

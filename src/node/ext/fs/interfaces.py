@@ -29,25 +29,18 @@ MODE_BINARY = 1
 class IFileIO(IFSLocation):
     """File IO interface."""
 
-    mode = Attribute(
-        'Mode of this file. Either ``MODE_TEXT`` or ``MODE_BINARY``'
-    )
+    mode = Attribute('Mode of this file. Either ``MODE_TEXT`` or ``MODE_BINARY``')
 
-    read_fd = Attribute(
-        'Context manager providing the file descriptor in read mode'
-    )
+    read_fd = Attribute('Context manager providing the file descriptor in read mode')
 
-    write_fd = Attribute(
-        'Context manager providing the file descriptor in write mode'
-    )
+    write_fd = Attribute('Context manager providing the file descriptor in write mode')
 
 
 class IFileNode(IFile, IFileIO, ILeaf):
     """Basic file node interface."""
 
     direct_sync = Attribute(
-        'Flag whether to directly sync filesystem with ``os.fsync`` on '
-        '``__call__``'
+        'Flag whether to directly sync filesystem with ``os.fsync`` on ``__call__``'
     )
 
     data = Attribute('Data of the file')
@@ -67,9 +60,7 @@ class IDirectory(INode, ICallable, IWildcardFactory, IFSLocation):
         'Default factory for creating directory children'
     )
 
-    default_file_factory = Attribute(
-        'Default factory for creating file children'
-    )
+    default_file_factory = Attribute('Default factory for creating file children')
 
     ignores = Attribute('Child keys to ignore')
 

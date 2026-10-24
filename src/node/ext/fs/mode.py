@@ -16,7 +16,6 @@ def get_fs_mode(node):
 
 @implementer(IFSMode)
 class FSMode(Behavior):
-
     @property
     def fs_mode(self):
         if not hasattr(self, '_fs_mode'):

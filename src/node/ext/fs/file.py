@@ -33,18 +33,12 @@ class FileIO(FSLocation):
     @default
     @property
     def read_fd(self):
-        return open_file(
-            join_fs_path(self),
-            'rb' if self.mode == MODE_BINARY else 'r'
-        )
+        return open_file(join_fs_path(self), 'rb' if self.mode == MODE_BINARY else 'r')
 
     @default
     @property
     def write_fd(self):
-        return open_file(
-            join_fs_path(self),
-            'wb' if self.mode == MODE_BINARY else 'w'
-        )
+        return open_file(join_fs_path(self), 'wb' if self.mode == MODE_BINARY else 'w')
 
 
 @implementer(IFileNode)
@@ -96,9 +90,6 @@ class FileNode(Node, FileIO):
             self._data = UNSET
 
 
-@plumbing(
-    DefaultInit,
-    FSMode,
-    FileNode)
-class File(object):
+@plumbing(DefaultInit, FSMode, FileNode)
+class File:
     pass

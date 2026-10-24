@@ -51,12 +51,7 @@ class DirectoryStorage(DictStorage, WildcardFactory, FSLocation):
 
     @finalize
     def __init__(
-        self,
-        name=None,
-        parent=None,
-        fs_path=None,
-        factories=None,
-        ignores=None
+        self, name=None, parent=None, fs_path=None, factories=None, ignores=None
     ):
         self.__name__ = name
         self.__parent__ = parent
@@ -108,10 +103,10 @@ class DirectoryStorage(DictStorage, WildcardFactory, FSLocation):
                 else:
                     class_ = factory
                 if not isinstance(value, class_):
-                    raise ValueError((
-                        'Given child node has wrong type. Expected ``{}``, '
-                        'got ``{}``'
-                    ).format(class_, type(value)))
+                    raise ValueError(
+                        f'Given child node has wrong type. Expected ``{class_}``, '
+                        f'got ``{type(value)}``'
+                    )
         if name in self._deleted_fs_children:
             self._deleted_fs_children.remove(name)
         self.storage[name] = value
@@ -135,8 +130,8 @@ class DirectoryStorage(DictStorage, WildcardFactory, FSLocation):
         except OSError:
             existing = set()
         existing.update(self.storage)
-        return iter(existing
-            .difference(self._deleted_fs_children)
+        return iter(
+            existing.difference(self._deleted_fs_children)
             .difference(self.ignores)
             .difference(self._renamed_fs_children)
             .union(self._renamed_fs_children.values())
@@ -150,10 +145,10 @@ class DirectoryStorage(DictStorage, WildcardFactory, FSLocation):
             if not os.path.exists(path):
                 os.mkdir(path)
             elif not os.path.isdir(path):
-                raise KeyError((
+                raise KeyError(
                     'Attempt to create directory with name '
-                    '"{}" which already exists as file.'
-                ).format(self.name))
+                    f'"{self.name}" which already exists as file.'
+                )
         while self._deleted_fs_children:
             path = join_fs_path(self, [self._deleted_fs_children.pop()])
             if os.path.exists(path):
@@ -191,10 +186,6 @@ class DirectoryStorage(DictStorage, WildcardFactory, FSLocation):
         self._renamed_fs_children[fs_name] = new_name
 
 
-@plumbing(
-    MappingAdopt,
-    MappingNode,
-    FSMode,
-    DirectoryStorage)
-class Directory(object):
+@plumbing(MappingAdopt, MappingNode, FSMode, DirectoryStorage)
+class Directory:
     """Object mapping a file system directory."""
