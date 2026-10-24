@@ -3,7 +3,6 @@ from node.behaviors import DictStorage
 from node.behaviors import MappingAdopt
 from node.behaviors import MappingNode
 from node.behaviors import WildcardFactory
-from node.compat import IS_PY2
 from node.ext.fs.file import File
 from node.ext.fs.interfaces import IDirectory
 from node.ext.fs.interfaces import IFile
@@ -20,15 +19,6 @@ import inspect
 import os
 import shutil
 import threading
-
-
-def _encode_name(fs_encoding, name):
-    name = (
-        name.encode(fs_encoding)
-        if IS_PY2 and isinstance(name, unicode)
-        else name
-    )
-    return name
 
 
 class DirectoryContext(threading.local):
@@ -80,7 +70,6 @@ class DirectoryStorage(DictStorage, WildcardFactory, FSLocation):
 
     @finalize
     def __getitem__(self, name):
-        name = _encode_name(self.fs_encoding, name)
         if name in self._deleted_fs_children:
             raise KeyError(name)
         try:
@@ -102,7 +91,6 @@ class DirectoryStorage(DictStorage, WildcardFactory, FSLocation):
 
     @finalize
     def __setitem__(self, name, value):
-        name = _encode_name(self.fs_encoding, name)
         if name in self.ignores:
             raise KeyError('Name is contained in ignores')
         if _directory_context.validate_child:
@@ -130,7 +118,6 @@ class DirectoryStorage(DictStorage, WildcardFactory, FSLocation):
 
     @finalize
     def __delitem__(self, name):
-        name = _encode_name(self.fs_encoding, name)
         if name in self.ignores:
             raise KeyError('Name is contained in ignores')
         fs_name = get_fs_name(self, name)
@@ -186,8 +173,6 @@ class DirectoryStorage(DictStorage, WildcardFactory, FSLocation):
 
     @default
     def rename(self, name, new_name):
-        name = _encode_name(self.fs_encoding, name)
-        new_name = _encode_name(self.fs_encoding, new_name)
         if name not in self:
             raise KeyError(name)
         if not new_name:

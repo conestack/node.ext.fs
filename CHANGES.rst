@@ -4,7 +4,10 @@ Changes
 2.0.1 (unreleased)
 ------------------
 
-- Nothing changed yet.
+- Drop the Python 2 remnants: ``node.compat`` usage, ``IS_PY2`` branches,
+  ``# -*- coding: utf-8 -*-`` and the ``_encode_name`` helper, which did
+  nothing on Python 3. ``fs_encoding`` is unused now but kept.
+  [rnix]
 
 
 2.0.0 (2026-02-03)

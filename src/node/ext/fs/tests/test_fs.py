@@ -1,10 +1,8 @@
-# -*- coding: utf-8 -*-
 from node.behaviors import DefaultInit
 from node.behaviors import MappingAdopt
 from node.behaviors import MappingNode
 from node.behaviors import MappingReference
 from node.behaviors import NodeReference
-from node.compat import IS_PY2
 from node.ext.fs import Directory
 from node.ext.fs import DirectoryStorage
 from node.ext.fs import File
@@ -240,12 +238,10 @@ class Tests(NodeTestCase):
         directory()
 
         expected = os.listdir(self.tempdir)[0]
-        expected = expected.decode('utf-8') if IS_PY2 else expected
         self.assertEqual(expected, u'ä')
 
         directory = Directory(name=self.tempdir)
-        expected = '\xc3\xa4' if IS_PY2 else u'ä'
-        self.assertEqual(directory[u'ä'].name, expected)
+        self.assertEqual(directory[u'ä'].name, u'ä')
 
     def test_file_factories(self):
         class TextFile(File):
